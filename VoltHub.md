@@ -1442,3 +1442,348 @@ task.spawn(function()
         end
     end
 end)
+
+-- =========================================
+-- VOLT HUB - CONFIG SAVE / LOAD SYSTEM
+-- =========================================
+
+local HttpService = game:GetService("HttpService")
+
+local FOLDER_NAME = "Volt Hub"
+local FILE_NAME = FOLDER_NAME .. "/config.json"
+
+-- CONFIG PADRÃO (todas as configurações salváveis)
+local Config = {
+    -- Farming
+    AutoFarm = false,
+    AutoKatakuri = false,
+    AutoBone = false,
+    FarmMode = "Farm Level",
+    
+    -- Settings Farming
+    WeaponType = "Melee",
+    BringMob = true,
+    AutoClick = false,
+    AutoV3 = false,
+    AutoV4 = false,
+    BringModeDistance = 350,
+    
+    -- Stats
+    AutoStatus = false,
+    StatusSelected = "Melee",
+    StatusPoints = 1,
+    
+    -- Chest Farm
+    AutoChest = false,
+    HopChest = false,
+    ChestLimit = 10,
+    
+    -- Islands
+    SelectedIsland = nil,
+    TweenSpeed = 300,
+    
+    -- Team
+    SelectedTeam = "Pirata"
+}
+
+-- =========================================
+-- CRIAR PASTA SE NÃO EXISTIR
+-- =========================================
+if not isfolder(FOLDER_NAME) then
+    makefolder(FOLDER_NAME)
+end
+
+-- =========================================
+-- SAVE CONFIG
+-- =========================================
+local function SaveConfig()
+    local success, err = pcall(function()
+        writefile(FILE_NAME, HttpService:JSONEncode(Config))
+    end)
+
+    if success then
+        Fl:Notify({
+            Title = "Config System",
+            Content = "Configurações salvas!",
+            Duration = 3
+        })
+    else
+        warn("[Volt Hub] Erro ao salvar config:", err)
+    end
+end
+
+-- =========================================
+-- LOAD CONFIG
+-- =========================================
+local function LoadConfig()
+    if not isfile(FILE_NAME) then
+        SaveConfig()
+        return
+    end
+
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(readfile(FILE_NAME))
+    end)
+
+    if success and type(data) == "table" then
+        for k, v in pairs(data) do
+            Config[k] = v
+        end
+        
+        -- Aplicar configurações carregadas às variáveis globais
+        getgenv().AF = Config.AutoFarm
+        getgenv().AK = Config.AutoKatakuri
+        getgenv().AB = Config.AutoBone
+        getgenv().FarmMode = Config.FarmMode
+        getgenv().WP = Config.WeaponType
+        getgenv().BM = Config.BringMob
+        getgenv().AC = Config.AutoClick
+        getgenv().AV3 = Config.AutoV3
+        getgenv().GRaceClickAutov4 = Config.AutoV4
+        getgenv().BringMode = Config.BringModeDistance
+        getgenv().AS = Config.AutoStatus
+        getgenv().SA = Config.StatusSelected
+        getgenv().SP = Config.StatusPoints
+        getgenv().AutoChest = Config.AutoChest
+        getgenv().HopChest = Config.HopChest
+        getgenv().ChestLimit = Config.ChestLimit
+        getgenv().SelectedIsland = Config.SelectedIsland
+        getgenv().TweenSpeed = Config.TweenSpeed
+        getgenv().SelectedTeam = Config.SelectedTeam
+        
+        Fl:Notify({
+            Title = "Config System",
+            Content = "Configurações carregadas!",
+            Duration = 3
+        })
+    else
+        warn("[Volt Hub] Config inválida, recriando...")
+        SaveConfig()
+    end
+end
+
+-- =========================================
+-- ATUALIZAR FUNÇÕES EXISTENTES
+-- =========================================
+
+-- Modificar o TG_MAIN para salvar automaticamente
+local TG_MAIN_Original = TG_MAIN.OnChanged
+TG_MAIN:OnChanged(function(v)
+    TG_MAIN_Original(v)
+    Config.AutoFarm = getgenv().AF
+    Config.AutoKatakuri = getgenv().AK
+    Config.AutoBone = getgenv().AB
+    SaveConfig()
+end)
+
+-- Modificar WeaponType Dropdown
+TabSF:AddDropdown("Weap",{Title="Select Weapon",Values={"Melee","Sword"},Default=1}):OnChanged(function(v)
+    getgenv().WP=v
+    Config.WeaponType = v
+    SaveConfig()
+end)
+
+-- Modificar BringMob Toggle
+TabSF:AddToggle("BM",{Title="Bring Mob",Default=Config.BringMob}):OnChanged(function(v)
+    getgenv().BM=v
+    Config.BringMob = v
+    SaveConfig()
+end)
+
+-- Modificar AutoClick Toggle
+TabSF:AddToggle("AC",{Title="Auto Click",Default=Config.AutoClick}):OnChanged(function(v)
+    getgenv().AC=v
+    Config.AutoClick = v
+    SaveConfig()
+end)
+
+-- Modificar AutoV3 Toggle
+TabSF:AddToggle("AV3",{Title="Auto Turn on v3",Default=Config.AutoV3}):OnChanged(function(v)
+    getgenv().AV3=v
+    Config.AutoV3 = v
+    SaveConfig()
+end)
+
+-- Modificar AutoV4 Toggle
+TabSF:AddToggle("AV4",{Title="Auto Turn on v4",Default=Config.AutoV4}):OnChanged(function(v)
+    getgenv().GRaceClickAutov4=v
+    Config.AutoV4 = v
+    SaveConfig()
+end)
+
+-- Modificar FarmMode Dropdown
+TabF:AddDropdown("FarmSel",{Title="Select Farming",Values={"Farm Level","Farm Katakuri","Farm Bone"},Default=1}):OnChanged(function(v)
+    getgenv().FarmMode=v
+    Config.FarmMode = v
+    SaveConfig()
+end)
+
+-- Modificar Status Dropdown
+TabSt:AddDropdown("Stat",{Title="Selecionar Status",Values={"Melee","Defense","Sword","Gun","Blox Fruit"},Default=1}):OnChanged(function(v)
+    getgenv().SA=({Melee="Melee",Defense="Defense",Sword="Sword",Gun="Gun",["Blox Fruit"]="Fruit"})[v]
+    Config.StatusSelected = getgenv().SA
+    SaveConfig()
+end)
+
+-- Modificar Status Points Slider
+TabSt:AddSlider("Pts",{Title="Select Points",Default=Config.StatusPoints,Min=1,Max=100,Rounding=0}):OnChanged(function(v)
+    getgenv().SP=v
+    Config.StatusPoints = v
+    SaveConfig()
+end)
+
+-- Modificar AutoStatus Toggle
+TabSt:AddToggle("AS",{Title="Auto Status",Default=Config.AutoStatus}):OnChanged(function(v)
+    getgenv().AS=v
+    Config.AutoStatus = v
+    SaveConfig()
+end)
+
+-- =========================================
+-- ADICIONAR NA SEÇÃO DE CHEST FARM
+-- =========================================
+
+-- Modificar ChestInput
+local ChestInput = TabEF:AddInput("ChestValue", {
+    Title = "Select Value Chest",
+    Default = tostring(Config.ChestLimit),
+    Placeholder = "Digite o número de baús",
+    Numeric = true,
+    Callback = function(value)
+        local num = tonumber(value)
+        if num and num > 0 then
+            getgenv().ChestLimit = math.floor(num)
+            Config.ChestLimit = getgenv().ChestLimit
+            SaveConfig()
+        end
+    end
+})
+
+-- Modificar TG_AutoChest
+TG_AutoChest:OnChanged(function(v)
+    getgenv().AutoChest = v
+    Config.AutoChest = v
+    SaveConfig()
+    
+    if v then
+        getgenv().ChestCollected = 0
+        getgenv().IgnoredChests = {}
+    else
+        SAT()
+        RNP()
+    end
+end)
+
+-- Modificar TG_HopChest
+TG_HopChest:OnChanged(function(v)
+    getgenv().HopChest = v
+    Config.HopChest = v
+    SaveConfig()
+end)
+
+-- =========================================
+-- ADICIONAR NA SEÇÃO DE ISLANDS
+-- =========================================
+
+-- Modificar IslandDropdown
+IslandDropdown:OnChanged(function(v)
+    getgenv().SelectedIsland = v
+    Config.SelectedIsland = v
+    SaveConfig()
+end)
+
+-- Modificar VelocitySlider
+VelocitySlider:OnChanged(function(value)
+    local roundedValue = math.floor(value / 10 + 0.5) * 10
+    roundedValue = math.max(50, math.min(350, roundedValue))
+    
+    getgenv().TweenSpeed = roundedValue
+    Config.TweenSpeed = roundedValue
+    SaveConfig()
+    
+    if roundedValue ~= value then
+        VelocitySlider:SetValue(roundedValue)
+    end
+end)
+
+-- =========================================
+-- ADICIONAR NA SEÇÃO DE TEAM
+-- =========================================
+
+-- Modificar TeamDropdown
+TeamDropdown:OnChanged(function(v)
+    getgenv().SelectedTeam = v
+    Config.SelectedTeam = v
+    SaveConfig()
+end)
+
+-- =========================================
+-- ADICIONAR BOTÕES DE CONFIG NO TAB SETTINGS
+-- =========================================
+
+TabSe:AddSection("Config System")
+
+TabSe:AddButton({
+    Title = "Save Config",
+    Description = "Salvar todas as configurações",
+    Callback = function()
+        SaveConfig()
+    end
+})
+
+TabSe:AddButton({
+    Title = "Load Config",
+    Description = "Carregar configurações salvas",
+    Callback = function()
+        LoadConfig()
+    end
+})
+
+TabSe:AddButton({
+    Title = "Reset Config",
+    Description = "Restaurar configurações padrão",
+    Callback = function()
+        if isfile(FILE_NAME) then
+            delfile(FILE_NAME)
+        end
+        
+        -- Resetar para valores padrão
+        Config = {
+            AutoFarm = false,
+            AutoKatakuri = false,
+            AutoBone = false,
+            FarmMode = "Farm Level",
+            WeaponType = "Melee",
+            BringMob = true,
+            AutoClick = false,
+            AutoV3 = false,
+            AutoV4 = false,
+            BringModeDistance = 350,
+            AutoStatus = false,
+            StatusSelected = "Melee",
+            StatusPoints = 1,
+            AutoChest = false,
+            HopChest = false,
+            ChestLimit = 10,
+            SelectedIsland = nil,
+            TweenSpeed = 300,
+            SelectedTeam = "Pirata"
+        }
+        
+        SaveConfig()
+        
+        Fl:Notify({
+            Title = "Config System",
+            Content = "Config resetada com sucesso!",
+            Duration = 3
+        })
+    end
+})
+
+-- =========================================
+-- INIT - CARREGAR CONFIG AO INICIAR
+-- =========================================
+task.spawn(function()
+    task.wait(1) -- Aguardar UI carregar
+    LoadConfig()
+end)
