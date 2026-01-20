@@ -1,3 +1,180 @@
+
+-- =========================================
+-- VOLT HUB - SISTEMA 100% AUTOMÁTICO
+-- SEM PRECISAR RECONFIGURAR NADA!
+-- =========================================
+
+local HttpService = game:GetService("HttpService")
+
+local FOLDER = "Volt Hub"
+local FILE = FOLDER .. "/config.json"
+
+local Config = {}
+
+if not isfolder(FOLDER) then
+    makefolder(FOLDER)
+end
+
+-- =========================================
+-- SAVE / LOAD
+-- =========================================
+local function SaveConfig()
+    pcall(function()
+        writefile(FILE, HttpService:JSONEncode(Config))
+    end)
+end
+
+local function LoadConfig()
+    if isfile(FILE) then
+        pcall(function()
+            local data = HttpService:JSONDecode(readfile(FILE))
+            for k, v in pairs(data) do
+                Config[k] = v
+            end
+        end)
+    end
+end
+
+LoadConfig()
+
+-- =========================================
+-- HOOK AUTOMÁTICO EM TODOS OS TOGGLES
+-- =========================================
+local function HookAllToggles(window)
+    task.wait(1) -- Aguardar UI carregar
+    
+    local function ScanForToggles(obj)
+        for _, child in pairs(obj:GetDescendants()) do
+            -- Detectar Toggles pelo nome da classe ou propriedades específicas
+            if child:IsA("Frame") and child.Name == "Toggle" or 
+               (child:IsA("TextButton") and child.Parent and child.Parent.Name:find("Toggle")) then
+                
+                local toggleId = child.Name
+                
+                -- Aplicar valor salvo
+                if Config[toggleId] ~= nil then
+                    task.spawn(function()
+                        local toggle = child
+                        
+                        -- Simular clique se necessário
+                        if Config[toggleId] == true and not toggle.BackgroundColor3 == Color3.fromRGB(0, 255, 0) then
+                            for i = 1, 2 do
+                                task.wait(0.1)
+                                for _, connection in pairs(getconnections(toggle.MouseButton1Click)) do
+                                    connection:Fire()
+                                end
+                            end
+                        end
+                    end)
+                end
+                
+                -- Hook para salvar quando mudar
+                for _, connection in pairs(getconnections(child.MouseButton1Click)) do
+                    local oldFunc = connection.Function
+                    connection:Disable()
+                    
+                    child.MouseButton1Click:Connect(function()
+                        oldFunc()
+                        task.wait(0.1)
+                        
+                        -- Detectar estado atual (exemplo: cor do toggle)
+                        local isActive = child.BackgroundColor3 == Color3.fromRGB(0, 255, 0)
+                        Config[toggleId] = isActive
+                        SaveConfig()
+                    end)
+                end
+            end
+        end
+    end
+    
+    -- Escanear a UI inteira
+    if window and window.Root then
+        ScanForToggles(window.Root)
+    end
+end
+
+-- =========================================
+-- MÉTODO ALTERNATIVO: HOOK DIRETO NAS VARIÁVEIS GETGENV()
+-- =========================================
+local function AutoSaveGetgenv()
+    -- Lista de variáveis para monitorar
+    local watchList = {
+        "AF", "AK", "AB", "BM", "AC", "AV3", "GRaceClickAutov4",
+        "AS", "AutoChest", "HopChest", "TweenToIsland"
+    }
+    
+    -- Carregar valores salvos
+    for _, varName in pairs(watchList) do
+        if Config[varName] ~= nil then
+            getgenv()[varName] = Config[varName]
+        end
+    end
+    
+    -- Monitorar mudanças continuamente
+    task.spawn(function()
+        local lastState = {}
+        
+        while task.wait(0.5) do
+            for _, varName in pairs(watchList) do
+                local currentValue = getgenv()[varName]
+                
+                if lastState[varName] ~= currentValue then
+                    lastState[varName] = currentValue
+                    Config[varName] = currentValue
+                    SaveConfig()
+                end
+            end
+        end
+    end)
+end
+
+-- =========================================
+-- MÉTODO MAIS SIMPLES: SAVE PERIÓDICO
+-- =========================================
+local function PeriodicSave()
+    task.spawn(function()
+        while task.wait(2) do
+            -- Salvar TODAS as variáveis getgenv() que são booleanas
+            for k, v in pairs(getgenv()) do
+                if type(v) == "boolean" or type(v) == "number" or type(v) == "string" then
+                    Config[k] = v
+                end
+            end
+            SaveConfig()
+        end
+    end)
+end
+
+-- =========================================
+-- RESTAURAR CONFIGS AO INICIAR
+-- =========================================
+local function RestoreConfigs()
+    task.wait(0.5)
+    
+    for k, v in pairs(Config) do
+        if getgenv()[k] ~= nil then
+            getgenv()[k] = v
+        end
+    end
+end
+
+-- =========================================
+-- INICIALIZAR TUDO
+-- =========================================
+task.spawn(function()
+    RestoreConfigs()    -- Restaurar valores salvos
+    AutoSaveGetgenv()   -- Monitorar mudanças
+    PeriodicSave()      -- Save de segurança a cada 2s
+end)
+
+-- =========================================
+-- EXPORTAR (OPCIONAL)
+-- =========================================
+getgenv().VoltSaveSystem = {
+    Save = SaveConfig,
+    Load = LoadConfig,
+    Config = Config
+}
 -- QuestIlha.lua  (RODAR PRIMEIRO, arquivo separado)
 
 local QuestIlha = {}
@@ -166,488 +343,6 @@ task.spawn(function()while task.wait(1)do if getgenv().AS and getgenv().SA and C
 task.spawn(function()while task.wait(0.3)do if getgenv().AV3 then RS.Remotes.CommE:FireServer("ActivateAbility")end end end)
 spawn(function()while wait(0.2)do if getgenv().GRaceClickAutov4 then local c=LP.Character;if c and c:FindFirstChild("RaceEnergy")then local rE=c.RaceEnergy;if rE and rE.Value>=1 then US(nil,"Y")end end end end end)
 Fl:Notify({Title="Volt Hub",Content="Carregado! Sea: "..GetSea().." | Lv: "..GL(),Duration=5})
--- ============================================
--- SEÇÃO DE CHEST FARM (Tab Stack Farming)
--- ============================================
-
-TabEF:AddSection("Chest Farm")
-
--- Variáveis globais para Chest
-getgenv().AutoChest = false
-getgenv().HopChest = false
-getgenv().ChestLimit = 10
-getgenv().ChestCollected = 0
-getgenv().IgnoredChests = {} -- Blacklist de baús já tentados
-
--- Input para definir quantidade de baús
-local ChestInput = TabEF:AddInput("ChestValue", {
-    Title = "Select Value Chest",
-    Default = "10",
-    Placeholder = "Digite o número de baús",
-    Numeric = true,
-    Callback = function(value)
-        local num = tonumber(value)
-        if num and num > 0 then
-            getgenv().ChestLimit = math.floor(num)
-        end
-    end
-})
-
--- Toggle Auto Chest
-local TG_AutoChest = TabEF:AddToggle("AutoChest", {
-    Title = "Auto Chest",
-    Default = false
-})
-
-TG_AutoChest:OnChanged(function(v)
-    getgenv().AutoChest = v
-    if v then
-        getgenv().ChestCollected = 0
-        getgenv().IgnoredChests = {} -- Limpar blacklist ao iniciar
-    else
-        SAT() -- Parar todos os tweens ativos
-        RNP() -- Resetar física do personagem
-    end
-end)
-
--- Toggle Hop Chest
-local TG_HopChest = TabEF:AddToggle("HopChest", {
-    Title = "Hop Chest",
-    Default = false
-})
-
-TG_HopChest:OnChanged(function(v)
-    getgenv().HopChest = v
-end)
-
--- Função para buscar baús no Workspace (COM BLACKLIST)
-local function GetChests()
-    local chests = {}
-
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name:lower():find("chest") then
-            -- Verificar se o chest NÃO está na blacklist
-            if not getgenv().IgnoredChests[obj] then
-                if obj:FindFirstChild("TouchInterest", true)
-                or obj:FindFirstChildOfClass("ClickDetector", true)
-                or obj:FindFirstChildOfClass("ProximityPrompt", true) then
-                    table.insert(chests, obj)
-                end
-            end
-        end
-    end
-
-    return chests
-end
-
--- Função para obter a posição do baú (CFrame)
-local function GetChestPosition(chest)
-    if chest:IsA("BasePart") then
-        return chest.CFrame
-    elseif chest:IsA("Model") then
-        -- Tentar pegar o PrimaryPart primeiro
-        if chest.PrimaryPart then
-            return chest.PrimaryPart.CFrame
-        end
-        -- Se não tiver, pegar qualquer BasePart
-        local part = chest:FindFirstChildWhichIsA("BasePart")
-        if part then
-            return part.CFrame
-        end
-    end
-    return nil
-end
-
--- Loop de Auto Chest
-task.spawn(function()
-    while task.wait(0.1) do
-        if getgenv().AutoChest then
-            pcall(function()
-                -- Verificar se atingiu o limite
-                if getgenv().ChestCollected >= getgenv().ChestLimit then
-                    getgenv().AutoChest = false
-                    TG_AutoChest:SetValue(false)
-                    SAT()
-                    RNP()
-                    
-                    -- Se Hop Chest estiver ativado
-                    if getgenv().HopChest then
-                        Fl:Notify({
-                            Title = "Chest Farm",
-                            Content = "Hop Chest em 5s...",
-                            Duration = 5
-                        })
-                        
-                        task.wait(5)
-                        
-                        -- Hop para outro servidor
-                        local TeleportService = game:GetService("TeleportService")
-                        TeleportService:Teleport(game.PlaceId, Plr)
-                    end
-                    
-                    return
-                end
-                
-                local char = Plr.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local hum = char and char:FindFirstChild("Humanoid")
-                
-                if not char or not hrp or not hum or hum.Health <= 0 then return end
-                
-                -- Buscar chests no Workspace (já filtra pela blacklist)
-                local chests = GetChests()
-                
-                if #chests > 0 then
-                    local nearestChest = nil
-                    local nearestDistance = math.huge
-                    
-                    -- Encontrar o baú mais próximo
-                    for _, chest in pairs(chests) do
-                        local chestCFrame = GetChestPosition(chest)
-                        
-                        if chestCFrame then
-                            local distance = (hrp.Position - chestCFrame.Position).Magnitude
-                            
-                            if distance < nearestDistance then
-                                nearestDistance = distance
-                                nearestChest = chest
-                            end
-                        end
-                    end
-                    
-                    if nearestChest then
-                        local chestCFrame = GetChestPosition(nearestChest)
-                        
-                        if chestCFrame then
-                            -- Guardar referência do baú antes de ir até ele
-                            local chestReference = nearestChest
-                            
-                            -- Ativar NoClip
-                            SNL(char, true)
-                            hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                            
-                            -- Usar TTG (Tween sem tremor) para ir direto até o baú
-                            TTG(hrp, chestCFrame, 300)
-                            
-                            -- Aguardar para coletar o baú
-                            task.wait(1)
-                            
-                            -- ADICIONAR O BAÚ NA BLACKLIST IMEDIATAMENTE
-                            getgenv().IgnoredChests[chestReference] = true
-                            
-                            -- Incrementar contador (independente se foi destruído ou não)
-                            getgenv().ChestCollected = getgenv().ChestCollected + 1
-                        end
-                    end
-                else
-                    -- Não há mais baús disponíveis no mapa
-                    if getgenv().ChestCollected >= getgenv().ChestLimit then
-                        getgenv().AutoChest = false
-                        TG_AutoChest:SetValue(false)
-                        SAT()
-                        RNP()
-                        
-                        if getgenv().HopChest then
-                            Fl:Notify({
-                                Title = "Chest Farm",
-                                Content = "Hop Chest em 5s...",
-                                Duration = 5
-                            })
-                            
-                            task.wait(5)
-                            
-                            local TeleportService = game:GetService("TeleportService")
-                            TeleportService:Teleport(game.PlaceId, Plr)
-                        end
-                    else
-                        task.wait(5) -- Aguarda 5 segundos antes de verificar novamente
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- ============================================
--- MÓDULO DE ILHAS (Tab Local Player)
--- ============================================
-
-TabLP:AddSection("Tab Island")
-
--- Tabela de ilhas por Sea
-local IslandsBySea = {
-    [1] = { -- Sea 1
-        "StartingArea",
-        "Jungle",
-        "Pirate Village",
-        "Desert",
-        "Frozen Village",
-        "MarineFord",
-        "Colosseum",
-        "Sky Island 1",
-        "Sky Island 2",
-        "Sky Island 3",
-        "Prison",
-        "Magma Village",
-        "Under Water Island",
-        "Upper Skylands",
-        "Fountain City"
-    },
-    [2] = { -- Sea 2
-        "Kingdom of Rose",
-        "Cafe",
-        "Mansion",
-        "Graveyard",
-        "Snow Mountain",
-        "Hot and Cold",
-        "Cursed Ship",
-        "Ice Castle",
-        "Forgotten Island",
-        "Dark Arena",
-        "Green Zone",
-        "Swan Room"
-    },
-    [3] = { -- Sea 3
-        "Port Town",
-        "Hydra Island",
-        "Great Tree",
-        "Castle On The Sea",
-        "Floating Turtle",
-        "Haunted Castle",
-        "Sea of Treats",
-        "Tiki Outpost"
-    }
-}
-
--- Coordenadas das ilhas
-local IslandPositions = {
-    -- Sea 1
-    ["StartingArea"] = CFrame.new(1071.2, 16.3, 1426.86),
-    ["Jungle"] = CFrame.new(-1192.07, 50, -51.23),
-    ["Pirate Village"] = CFrame.new(-1147, 4.8, 3833.5),
-    ["Desert"] = CFrame.new(944.15, 6.4, 4373.3),
-    ["Frozen Village"] = CFrame.new(1253, 88.3, -1344.6),
-    ["MarineFord"] = CFrame.new(-4914.8, 50.4, 4281.7),
-    ["Colosseum"] = CFrame.new(-1427.6, 7.3, -2792.6),
-    ["Sky Island 1"] = CFrame.new(-4970.21, 717.7, -2622.35),
-    ["Sky Island 2"] = CFrame.new(-7894.6, 5547.5, -380.29),
-    ["Sky Island 3"] = CFrame.new(-7894.6, 5547.5, -380.29),
-    ["Prison"] = CFrame.new(4854.16, 5.7, 734.85),
-    ["Magma Village"] = CFrame.new(-5247.7, 12.8, 8504.6),
-    ["Under Water Island"] = CFrame.new(61163.8, 11.6, 1819.7),
-    ["Upper Skylands"] = CFrame.new(-7894.6, 5547.5, -380.29),
-    ["Fountain City"] = CFrame.new(5127.1, 59.1, 4105.07),
-    
-    -- Sea 2
-    ["Kingdom of Rose"] = CFrame.new(-246.7, 38.4, 5373.8),
-    ["Cafe"] = CFrame.new(-387.6, 73.1, 298.9),
-    ["Mansion"] = CFrame.new(-12550.5, 337.2, -7449.6),
-    ["Graveyard"] = CFrame.new(-5320.9, 47.3, -2496.5),
-    ["Snow Mountain"] = CFrame.new(753.7, 408.2, -5274.6),
-    ["Hot and Cold"] = CFrame.new(-6063.9, 15.3, -5127.2),
-    ["Cursed Ship"] = CFrame.new(923.2, 125.9, 32852.8),
-    ["Ice Castle"] = CFrame.new(5812.6, 88.7, -6184.5),
-    ["Forgotten Island"] = CFrame.new(-3053.9, 236.4, -10145.3),
-    ["Dark Arena"] = CFrame.new(3686.0, 117.7, -3220.0),
-    ["Green Zone"] = CFrame.new(-2448.5, 73.0, -3210.1),
-    ["Swan Room"] = CFrame.new(2284.91, 15.2, 905.48),
-    
-    -- Sea 3
-    ["Port Town"] = CFrame.new(-290.7, 6.7, 5343.5),
-    ["Hydra Island"] = CFrame.new(5228.8, 604.2, -345.0),
-    ["Great Tree"] = CFrame.new(2681.2, 1682.8, -7190.9),
-    ["Castle On The Sea"] = CFrame.new(-5075.5, 314.5, -2952.3),
-    ["Floating Turtle"] = CFrame.new(-13274.5, 332.0, -7632.1),
-    ["Haunted Castle"] = CFrame.new(-9515.7, 172.1, 5613.1),
-    ["Sea of Treats"] = CFrame.new(-2077.3, 252.6, -12373.9),
-    ["Tiki Outpost"] = CFrame.new(-16542.4, 55.7, 1044.4)
-}
-
--- Variável global para controlar tween de ilha e velocidade
-getgenv().TweenToIsland = false
-getgenv().SelectedIsland = nil
-getgenv().TweenSpeed = 300
-
--- Função para obter ilhas do Sea atual
-local function GetCurrentSeaIslands()
-    local currentSea = GetSea()
-    return IslandsBySea[currentSea] or {}
-end
-
--- Criar Dropdown com ilhas do Sea atual
-local currentIslands = GetCurrentSeaIslands()
-local IslandDropdown = TabLP:AddDropdown("IslandSel", {
-    Title = "Select Island",
-    Values = currentIslands,
-    Default = 1
-})
-
-IslandDropdown:OnChanged(function(v)
-    getgenv().SelectedIsland = v
-end)
-
--- Toggle para ativar Tween to Island
-local TG_Island = TabLP:AddToggle("TweenIsland", {
-    Title = "Tween to Island",
-    Default = false
-})
-
-TG_Island:OnChanged(function(v)
-    getgenv().TweenToIsland = v
-    
-    if v then
-        task.spawn(function()
-            if not getgenv().SelectedIsland then
-                TG_Island:SetValue(false)
-                return
-            end
-            
-            local targetCFrame = IslandPositions[getgenv().SelectedIsland]
-            if not targetCFrame then
-                TG_Island:SetValue(false)
-                return
-            end
-            
-            local c = Plr.Character
-            local hrp = c and c:FindFirstChild("HumanoidRootPart")
-            
-            if not c or not hrp then
-                TG_Island:SetValue(false)
-                return
-            end
-            
-            -- Usar a função TTG existente para teleporte suave com velocidade customizada
-            TTG(hrp, targetCFrame, getgenv().TweenSpeed)
-            
-            -- Desativar após chegar
-            task.wait(0.5)
-            TG_Island:SetValue(false)
-            getgenv().TweenToIsland = false
-        end)
-    end
-end)
-
--- Slider para velocidade do Tween (de 10 em 10)
-local VelocitySlider = TabLP:AddSlider("TweenVelocity", {
-    Title = "Select Velocity Tween",
-    Default = 300,
-    Min = 50,
-    Max = 350,
-    Rounding = 0
-})
-
-VelocitySlider:OnChanged(function(value)
-    -- Arredondar para o múltiplo de 10 mais próximo
-    local roundedValue = math.floor(value / 10 + 0.5) * 10
-    
-    -- Garantir que está dentro dos limites
-    roundedValue = math.max(50, math.min(350, roundedValue))
-    
-    getgenv().TweenSpeed = roundedValue
-    
-    -- Atualizar o slider para o valor arredondado
-    if roundedValue ~= value then
-        VelocitySlider:SetValue(roundedValue)
-    end
-end)
-
--- Atualizar dropdown quando mudar de Sea
-task.spawn(function()
-    local lastSea = GetSea()
-    while task.wait(5) do
-        local currentSea = GetSea()
-        if currentSea ~= lastSea then
-            lastSea = currentSea
-            -- Atualizar as ilhas no dropdown
-            local newIslands = GetCurrentSeaIslands()
-            -- Recriar o dropdown com as novas ilhas
-            IslandDropdown:SetValues(newIslands)
-            getgenv().SelectedIsland = newIslands[1]
-        end
-    end
-end)
-
--- ============================================
--- SEÇÃO DE MUDANÇA DE TIME
--- ============================================
-
-TabLP:AddSection("Tab Time")
-
--- Variáveis para controle de time
-getgenv().SelectedTeam = "Pirata"
-
--- Função para verificar o time atual do jogador
-local function GetCurrentTeam()
-    local playerTeam = Plr.Team
-    if playerTeam then
-        return playerTeam.Name
-    end
-    return nil
-end
-
--- Dropdown para selecionar time
-local TeamDropdown = TabLP:AddDropdown("TeamSel", {
-    Title = "Select Time",
-    Values = {"Pirata", "Marine"},
-    Default = 1
-})
-
-TeamDropdown:OnChanged(function(v)
-    getgenv().SelectedTeam = v
-end)
-
--- Toggle para mudar de time
-local TG_ChangeTeam = TabLP:AddToggle("ChangeTeam", {
-    Title = "Change Time",
-    Default = false
-})
-
-TG_ChangeTeam:OnChanged(function(v)
-    if v then
-        task.spawn(function()
-            local currentTeam = GetCurrentTeam()
-            local selectedTeam = getgenv().SelectedTeam
-            
-            -- Verificar se já está no time selecionado
-            if (selectedTeam == "Pirata" and currentTeam == "Pirates") or 
-               (selectedTeam == "Marine" and currentTeam == "Marines") then
-                TG_ChangeTeam:SetValue(false)
-                return
-            end
-            
-            -- Determinar qual NPC usar
-            local npcName = selectedTeam == "Pirata" and "Pirate Recruiter" or "Marine Recruiter"
-            
-            -- Buscar o NPC no workspace
-            local npc = workspace:FindFirstChild(npcName, true)
-            
-            if npc then
-                -- Tentar encontrar o RemoteEvent relacionado ao NPC
-                local args = {
-                    [1] = npcName
-                }
-                
-                -- Procurar pelo RemoteEvent correto no ReplicatedStorage
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local remotes = ReplicatedStorage:GetDescendants()
-                
-                for _, remote in pairs(remotes) do
-                    if remote:IsA("RemoteEvent") and (remote.Name == "SetTeam" or remote.Name == "ChangeTeam" or remote.Name:find("Team")) then
-                        pcall(function()
-                            remote:FireServer(unpack(args))
-                        end)
-                    end
-                end
-                
-                -- Aguardar um pouco para a mudança acontecer
-                task.wait(1)
-            end
-            
-            -- Desativar o toggle
-            TG_ChangeTeam:SetValue(false)
-        end)
-    end
-end)
 -- ESP Manager & Fruits + Auto Collect Fruits (MÓDULO SEPARADO)
 local PS=game:GetService("Players");local WS=game:GetService("Workspace")
 local RS=game:GetService("ReplicatedStorage");local TweenService=game:GetService("TweenService")
@@ -1070,720 +765,4 @@ task.spawn(function()
             isCollecting=false
         end)
     end
-end)
--- Módulo: Estilo de Luta, TTK e Boss Farm - Nexus Hub V3
-local RS = game:GetService("ReplicatedStorage")
-local TS = game:GetService("TweenService")
-local RSvc = game:GetService("RunService")
-local Plr = game:GetService("Players").LocalPlayer
-local WS = game:GetService("Workspace")
-
-local Remotes = RS:WaitForChild("Remotes", 5)
-local CF = Remotes:FindFirstChild("CommF_")
-
--- Configurações globais
-getgenv().AutoBuyLegendarySword = false
-getgenv().SelectBoss = nil
-getgenv().AutoFarmBoss = false
-getgenv().AutoFarmAllBoss = false
-
--- Detecção de Sea
-local placeId = game.PlaceId
-World1 = placeId == 2753915549 or placeId == 85211729168715
-World2 = placeId == 4442272183 or placeId == 79091703265657
-World3 = placeId == 7449423635 or placeId == 100117331123089
-
-function GetSea()
-    if World1 then return 1 
-    elseif World2 then return 2 
-    elseif World3 then return 3 
-    else return 1 end
-end
-
--- Sistema de Tween Anti-Tremor
-local activeTween, heartbeatConn = nil, nil
-
-local function StopTweenAndHeartbeat()
-    if activeTween then activeTween:Cancel() activeTween = nil end
-    if heartbeatConn then heartbeatConn:Disconnect() heartbeatConn = nil end
-end
-
-local function TweenToPosition(targetCFrame)
-    local char, hrp = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    StopTweenAndHeartbeat()
-    local distance = (hrp.Position - targetCFrame.Position).Magnitude
-    activeTween = TS:Create(hrp, TweenInfo.new(distance / 250, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
-    activeTween:Play()
-    heartbeatConn = RSvc.Heartbeat:Connect(function()
-        if not hrp or not hrp.Parent then StopTweenAndHeartbeat() return end
-        hrp.Velocity = Vector3.new(0, 0, 0)
-    end)
-    return activeTween
-end
-
-local function SetNoClip(char, enabled)
-    if not char then return end
-    for _, p in ipairs(char:GetDescendants()) do
-        if p:IsA("BasePart") and (p.Name == "HumanoidRootPart" or p.Name == "UpperTorso" or p.Name == "LowerTorso" or p.Name == "Torso") then
-            p.CanCollide = not enabled
-        end
-    end
-end
-
-local function EquipWeapon()
-    pcall(function()
-        local c, bp = Plr.Character, Plr.Backpack
-        if not c or not c:FindFirstChild("Humanoid") then return end
-        local tool = nil
-        if getgenv().WP == "Sword" then
-            for _, v in ipairs(bp:GetChildren()) do
-                if v:IsA("Tool") and (v.ToolTip == "Sword" or v.Name:find("Katana") or v.Name:find("Blade")) then
-                    tool = v break
-                end
-            end
-        end
-        if not tool then tool = bp:FindFirstChild("Combat") end
-        if tool then c.Humanoid:EquipTool(tool) end
-    end)
-end
-
--- Posições dos NPCs de Fighting Styles
-local FightingStyleNPCs = {
-    ["Dark Step"] = {pos = CFrame.new(-983.618, 12.45, 3990.463), sea = 1},
-    ["Electro"] = {pos = CFrame.new(-5382.782, 12.55, -2148.818), sea = 1},
-    ["Fishman Karate"] = {pos = CFrame.new(61586.722, 18.9, 989.584), sea = 1},
-    ["Dragon Breath"] = {pos = CFrame.new(699.572, 186.99, 656.837), sea = 2},
-    ["Death Step"] = {pos = CFrame.new(6358.787, 296.661, -6766.079), sea = 2},
-    ["Sharkman Karate"] = {pos = CFrame.new(-2602.152, 239.212, -10315.58), sea = 2},
-    ["Electric Claw"] = {pos = CFrame.new(6358.787, 296.661, -6766.079), sea = 3},
-    ["Dragon Talon"] = {pos = CFrame.new(5666.225, 1211.307, 866.386), sea = 3},
-    ["Godhuman"] = {pos = CFrame.new(-13777.618, 334.652, -9879.684), sea = 3},
-    ["Sanguine Art"] = {pos = CFrame.new(-16515.053, 23.17, -193.006), sea = 3}
-}
-
-local function BuyFightingStyle(styleName, remoteCommand)
-    local styleData = FightingStyleNPCs[styleName]
-    if not styleData then return end
-    
-    local currentSea = GetSea()
-    if currentSea < styleData.sea then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Volt Hub V3",
-            Text = "Você precisa estar no Sea " .. styleData.sea .. " para comprar " .. styleName,
-            Duration = 5
-        })
-        return
-    end
-    
-    local tween = TweenToPosition(styleData.pos)
-    if tween then
-        tween.Completed:Wait()
-        task.wait(0.5)
-        StopTweenAndHeartbeat()
-        pcall(remoteCommand)
-    end
-end
-
-local function BuyLegendarySword()
-    if not CF then return end
-    for _, sword in ipairs({"Shisui", "Saddi", "Wando"}) do
-        local hasSword = false
-        pcall(function()
-            if Plr.Backpack:FindFirstChild(sword) or (Plr.Character and Plr.Character:FindFirstChild(sword)) then
-                hasSword = true
-            end
-        end)
-        if not hasSword then
-            pcall(function() CF:InvokeServer("BuyItem", "Legendary Sword Dealer", sword) end)
-            task.wait(0.5)
-        end
-    end
-end
-
--- IMPORTANTE: Aguarda as tabs serem criadas
-task.wait(1)
-
--- Verifica se TabS existe antes de adicionar
-if TabS then
-    TabS:AddSection("Estilos de Lutas")
-    
-    TabS:AddButton({Title = "Buy Dark Step", Callback = function() BuyFightingStyle("Dark Step", function() CF:InvokeServer("BuyBlackLeg") end) end})
-    TabS:AddButton({Title = "Buy Eletric", Callback = function() BuyFightingStyle("Electro", function() CF:InvokeServer("BuyElectro") end) end})
-    TabS:AddButton({Title = "Buy Water Kung Fu", Callback = function() BuyFightingStyle("Fishman Karate", function() CF:InvokeServer("BuyFishmanKarate") end) end})
-    TabS:AddButton({Title = "Buy Dragon Breath", Callback = function() BuyFightingStyle("Dragon Breath", function() CF:InvokeServer("BlackbeardReward", "DragonClaw", "1") CF:InvokeServer("BlackbeardReward", "DragonClaw", "2") end) end})
-    TabS:AddButton({Title = "Buy Death Step", Callback = function() BuyFightingStyle("Death Step", function() CF:InvokeServer("BuyDeathStep") end) end})
-    TabS:AddButton({Title = "Buy Sharkman Karatê", Callback = function() BuyFightingStyle("Sharkman Karate", function() CF:InvokeServer("BuySharkmanKarate", true) CF:InvokeServer("BuySharkmanKarate") end) end})
-    TabS:AddButton({Title = "Buy Eletric Claw", Callback = function() BuyFightingStyle("Electric Claw", function() CF:InvokeServer("BuyElectricClaw", "Start") CF:InvokeServer("BuyElectricClaw") end) end})
-    TabS:AddButton({Title = "Buy Dragon Talon", Callback = function() BuyFightingStyle("Dragon Talon", function() CF:InvokeServer("BuyDragonTalon", true) CF:InvokeServer("BuyDragonTalon") end) end})
-    TabS:AddButton({Title = "Buy GodHuman", Callback = function() BuyFightingStyle("Godhuman", function() CF:InvokeServer("BuyGodhuman", true) CF:InvokeServer("BuyGodhuman") end) end})
-    TabS:AddButton({Title = "Buy Sanguine Art", Callback = function() BuyFightingStyle("Sanguine Art", function() CF:InvokeServer("BuySanguineArt", true) CF:InvokeServer("BuySanguineArt") end) end})
-    
-    local TG_ABLS = TabS:AddToggle("AutoBuyLegSword", {Title = "Auto Buy Legendary Sword", Default = false})
-    TG_ABLS:OnChanged(function(v) getgenv().AutoBuyLegendarySword = v end)
-end
-
--- Verifica se TabSe existe antes de adicionar o botão de códigos
-if TabSe then
-    TabSe:AddButton({
-        Title = "Redeem All Codes",
-        Callback = function()
-            local codes = {
-                "LIGHTNINGABUSE", "1LOSTADMIN", "ADMINFIGHT", "GIFTINGHOURS", "NOMOREHACK",
-                "BANEXPLOIT", "WildDares", "BossBuild", "GetPranked", "EARNFRUITS",
-                "KITTRESET", "Bignews", "CHANDLER", "Fudd10", "fudd10v2",
-                "Sub2UncleKizaru", "FIGHT4FRUIT", "kittgaming", "TRIPLEABUSE",
-                "Sub2CaptainMaui", "Sub2Fer999", "EnyuisPro", "Magicbus", "JCWK",
-                "Starcodeheo", "Bluxxy", "SUB2GAMERROBOT_EXP1", "Sub2NoobMaster123",
-                "Sub2Daigrock", "Axiore", "TantaiGaming", "StrawHatMaine",
-                "Sub2OfficialNoobie", "TheGreatAce", "JULYUPDATERESET", "ADMINHACKED",
-                "SEATROLLING", "24NOADMIN", "ADMINTROLL", "NEWTROLL", "SECRETADMIN",
-                "staffbattle", "NOEXPLOIT", "NOOB2ADMIN", "CODESLIDE", "fruitconcepts",
-                "krazydares"
-            }
-            
-            local Redeem = Remotes and Remotes:FindFirstChild("Redeem")
-            if not Redeem then 
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "Volt Hub V3",
-                    Text = "Sistema de códigos indisponível!",
-                    Duration = 5
-                })
-                return 
-            end
-            
-            for i, code in ipairs(codes) do
-                task.wait(0.1)
-                pcall(function()
-                    Redeem:InvokeServer(code)
-                end)
-            end
-            
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "Volt Hub V3",
-                Text = "Todos os códigos foram resgatados!",
-                Duration = 5
-            })
-        end
-    })
-end
-
-task.spawn(function()
-    while task.wait(5) do
-        if getgenv().AutoBuyLegendarySword then pcall(BuyLegendarySword) end
-    end
-end)
-
--- Boss Farm System
-local tableBoss = {}
-if World1 then
-    tableBoss = {"The Gorilla King", "Bobby", "Yeti", "Mob Leader", "Vice Admiral", "Warden", "Chief Warden", "Swan", "Magma Admiral", "Fishman Lord", "Wysper", "Thunder God", "Cyborg", "Saber Expert"}
-elseif World2 then
-    tableBoss = {"Diamond", "Jeremy", "Fajita", "Don Swan", "Smoke Admiral", "Cursed Captain", "Darkbeard", "Order", "Awakened Ice Admiral", "Tide Keeper"}
-elseif World3 then
-    tableBoss = {"Stone", "Island Empress", "Kilo Admiral", "Captain Elephant", "Beautiful Pirate", "rip_indra True Form", "Longma", "Soul Reaper", "Cake Queen", "Cake Prince", "Dough King"}
-end
-
--- Verifica se TabEF existe
-if TabEF then
-    TabEF:AddSection("Boss Farm")
-    
-    local Dropdown = TabEF:AddDropdown("Dropdown", {Title = "Select Boss", Values = tableBoss, Multi = false})
-    Dropdown:OnChanged(function(Value) getgenv().SelectBoss = Value end)
-    
-    local Toggle = TabEF:AddToggle("Toggle", {Title = "Auto Kill Boss", Default = getgenv().AutoFarmBoss})
-    Toggle:OnChanged(function(Value)
-        getgenv().AutoFarmBoss = Value
-        if not Value then
-            StopTweenAndHeartbeat()
-            local char = Plr.Character
-            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-                char.HumanoidRootPart.Anchored = false
-                char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new()
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                task.wait(0.1)
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-            end
-        end
-    end)
-    
-    local Toggle2 = TabEF:AddToggle("Toggle2", {Title = "Auto Kill All Boss", Default = false})
-    Toggle2:OnChanged(function(Value)
-        getgenv().AutoFarmAllBoss = Value
-        if not Value then
-            StopTweenAndHeartbeat()
-            local char = Plr.Character
-            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-                char.HumanoidRootPart.Anchored = false
-                char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new()
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                task.wait(0.1)
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-            end
-        end
-    end)
-end
-
--- Loop Auto Kill Boss
-spawn(function()
-    while task.wait(0.2) do
-        if getgenv().AutoFarmBoss and getgenv().SelectBoss then
-            pcall(function()
-                local char, hrp, hum = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart"), Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-                if not char or not hrp or not hum then return end
-                
-                local boss = WS.Enemies:FindFirstChild(getgenv().SelectBoss)
-                if boss then
-                    for _, v in pairs(WS.Enemies:GetChildren()) do
-                        if v.Name == getgenv().SelectBoss and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-                            repeat
-                                task.wait()
-                                SetNoClip(char, true)
-                                EquipWeapon()
-                                v.HumanoidRootPart.CanCollide = false
-                                v.Humanoid.WalkSpeed = 0
-                                v.HumanoidRootPart.Size = Vector3.new(80, 80, 80)
-                                hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                                hrp.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
-                                hrp.AssemblyLinearVelocity = Vector3.zero
-                            until not getgenv().AutoFarmBoss or not v.Parent or v.Humanoid.Health <= 0
-                            StopTweenAndHeartbeat()
-                        end
-                    end
-                else
-                    local replicatedBoss = RS:FindFirstChild(getgenv().SelectBoss)
-                    if replicatedBoss and replicatedBoss:FindFirstChild("HumanoidRootPart") then
-                        local tween = TweenToPosition(replicatedBoss.HumanoidRootPart.CFrame * CFrame.new(5, 10, 7))
-                        if tween then tween.Completed:Wait() end
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- Loop Auto Kill All Boss
-spawn(function()
-    while task.wait(0.2) do
-        if getgenv().AutoFarmAllBoss then
-            pcall(function()
-                for i, boss in pairs(tableBoss) do
-                    if WS.Enemies:FindFirstChild(boss) then
-                        for i, v in pairs(WS.Enemies:GetChildren()) do
-                            if v.Name == boss and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
-                                local char, hrp, hum = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart"), Plr.Character and Plr.Character:FindFirstChild("Humanoid")
-                                if not char or not hrp or not hum then return end
-                                repeat
-                                    task.wait()
-                                    SetNoClip(char, true)
-                                    EquipWeapon()
-                                    v.HumanoidRootPart.CanCollide = false
-                                    v.Humanoid.WalkSpeed = 0
-                                    v.HumanoidRootPart.Size = Vector3.new(80, 80, 80)
-                                    hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                                    hrp.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
-                                    hrp.AssemblyLinearVelocity = Vector3.zero
-                                until not getgenv().AutoFarmAllBoss or not v.Parent or v.Humanoid.Health <= 0
-                                StopTweenAndHeartbeat()
-                            end
-                        end
-                    else
-                        if RS:FindFirstChild(boss) then
-                            local replicatedBoss = RS:FindFirstChild(boss)
-                            if replicatedBoss and replicatedBoss:FindFirstChild("HumanoidRootPart") then
-                                local tween = TweenToPosition(replicatedBoss.HumanoidRootPart.CFrame * CFrame.new(5, 10, 2))
-                                if tween then tween.Completed:Wait() end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- Sistema de Ataque
-local RA, RH
-task.spawn(function()
-    task.wait(2)
-    pcall(function()
-        local M = RS:WaitForChild("Modules", 5)
-        if M then
-            local N = M:FindFirstChild("Net")
-            if N then
-                RA = N:FindFirstChild("RE/RegisterAttack")
-                RH = N:FindFirstChild("RE/RegisterHit")
-            end
-        end
-    end)
-end)
-
-task.spawn(function()
-    while task.wait(0.1) do
-        if (getgenv().AutoFarmBoss or getgenv().AutoFarmAllBoss) and RA and RH then
-            pcall(function()
-                local targetBosses = {}
-                if getgenv().AutoFarmBoss and getgenv().SelectBoss then
-                    table.insert(targetBosses, getgenv().SelectBoss)
-                elseif getgenv().AutoFarmAllBoss then
-                    targetBosses = tableBoss
-                end
-                for _, bossName in pairs(targetBosses) do
-                    for _, v in pairs(WS.Enemies:GetChildren()) do
-                        if v.Name == bossName and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Head") and v.Humanoid.Health > 0 then
-                            local targets = {{v, v.Head}}
-                            RA:FireServer(0.1)
-                            RH:FireServer(v.Head, targets)
-                            break
-                        end
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- =========================================
--- VOLT HUB - CONFIG SAVE / LOAD SYSTEM
--- =========================================
-
-local HttpService = game:GetService("HttpService")
-
-local FOLDER_NAME = "Volt Hub"
-local FILE_NAME = FOLDER_NAME .. "/config.json"
-
--- CONFIG PADRÃO (todas as configurações salváveis)
-local Config = {
-    -- Farming
-    AutoFarm = false,
-    AutoKatakuri = false,
-    AutoBone = false,
-    FarmMode = "Farm Level",
-    
-    -- Settings Farming
-    WeaponType = "Melee",
-    BringMob = true,
-    AutoClick = false,
-    AutoV3 = false,
-    AutoV4 = false,
-    BringModeDistance = 350,
-    
-    -- Stats
-    AutoStatus = false,
-    StatusSelected = "Melee",
-    StatusPoints = 1,
-    
-    -- Chest Farm
-    AutoChest = false,
-    HopChest = false,
-    ChestLimit = 10,
-    
-    -- Islands
-    SelectedIsland = nil,
-    TweenSpeed = 300,
-    
-    -- Team
-    SelectedTeam = "Pirata"
-}
-
--- =========================================
--- CRIAR PASTA SE NÃO EXISTIR
--- =========================================
-if not isfolder(FOLDER_NAME) then
-    makefolder(FOLDER_NAME)
-end
-
--- =========================================
--- SAVE CONFIG
--- =========================================
-local function SaveConfig()
-    local success, err = pcall(function()
-        writefile(FILE_NAME, HttpService:JSONEncode(Config))
-    end)
-
-    if success then
-        Fl:Notify({
-            Title = "Config System",
-            Content = "Configurações salvas!",
-            Duration = 3
-        })
-    else
-        warn("[Volt Hub] Erro ao salvar config:", err)
-    end
-end
-
--- =========================================
--- LOAD CONFIG
--- =========================================
-local function LoadConfig()
-    if not isfile(FILE_NAME) then
-        SaveConfig()
-        return
-    end
-
-    local success, data = pcall(function()
-        return HttpService:JSONDecode(readfile(FILE_NAME))
-    end)
-
-    if success and type(data) == "table" then
-        for k, v in pairs(data) do
-            Config[k] = v
-        end
-        
-        -- Aplicar configurações carregadas às variáveis globais
-        getgenv().AF = Config.AutoFarm
-        getgenv().AK = Config.AutoKatakuri
-        getgenv().AB = Config.AutoBone
-        getgenv().FarmMode = Config.FarmMode
-        getgenv().WP = Config.WeaponType
-        getgenv().BM = Config.BringMob
-        getgenv().AC = Config.AutoClick
-        getgenv().AV3 = Config.AutoV3
-        getgenv().GRaceClickAutov4 = Config.AutoV4
-        getgenv().BringMode = Config.BringModeDistance
-        getgenv().AS = Config.AutoStatus
-        getgenv().SA = Config.StatusSelected
-        getgenv().SP = Config.StatusPoints
-        getgenv().AutoChest = Config.AutoChest
-        getgenv().HopChest = Config.HopChest
-        getgenv().ChestLimit = Config.ChestLimit
-        getgenv().SelectedIsland = Config.SelectedIsland
-        getgenv().TweenSpeed = Config.TweenSpeed
-        getgenv().SelectedTeam = Config.SelectedTeam
-        
-        Fl:Notify({
-            Title = "Config System",
-            Content = "Configurações carregadas!",
-            Duration = 3
-        })
-    else
-        warn("[Volt Hub] Config inválida, recriando...")
-        SaveConfig()
-    end
-end
-
--- =========================================
--- ATUALIZAR FUNÇÕES EXISTENTES
--- =========================================
-
--- Modificar o TG_MAIN para salvar automaticamente
-local TG_MAIN_Original = TG_MAIN.OnChanged
-TG_MAIN:OnChanged(function(v)
-    TG_MAIN_Original(v)
-    Config.AutoFarm = getgenv().AF
-    Config.AutoKatakuri = getgenv().AK
-    Config.AutoBone = getgenv().AB
-    SaveConfig()
-end)
-
--- Modificar WeaponType Dropdown
-TabSF:AddDropdown("Weap",{Title="Select Weapon",Values={"Melee","Sword"},Default=1}):OnChanged(function(v)
-    getgenv().WP=v
-    Config.WeaponType = v
-    SaveConfig()
-end)
-
--- Modificar BringMob Toggle
-TabSF:AddToggle("BM",{Title="Bring Mob",Default=Config.BringMob}):OnChanged(function(v)
-    getgenv().BM=v
-    Config.BringMob = v
-    SaveConfig()
-end)
-
--- Modificar AutoClick Toggle
-TabSF:AddToggle("AC",{Title="Auto Click",Default=Config.AutoClick}):OnChanged(function(v)
-    getgenv().AC=v
-    Config.AutoClick = v
-    SaveConfig()
-end)
-
--- Modificar AutoV3 Toggle
-TabSF:AddToggle("AV3",{Title="Auto Turn on v3",Default=Config.AutoV3}):OnChanged(function(v)
-    getgenv().AV3=v
-    Config.AutoV3 = v
-    SaveConfig()
-end)
-
--- Modificar AutoV4 Toggle
-TabSF:AddToggle("AV4",{Title="Auto Turn on v4",Default=Config.AutoV4}):OnChanged(function(v)
-    getgenv().GRaceClickAutov4=v
-    Config.AutoV4 = v
-    SaveConfig()
-end)
-
--- Modificar FarmMode Dropdown
-TabF:AddDropdown("FarmSel",{Title="Select Farming",Values={"Farm Level","Farm Katakuri","Farm Bone"},Default=1}):OnChanged(function(v)
-    getgenv().FarmMode=v
-    Config.FarmMode = v
-    SaveConfig()
-end)
-
--- Modificar Status Dropdown
-TabSt:AddDropdown("Stat",{Title="Selecionar Status",Values={"Melee","Defense","Sword","Gun","Blox Fruit"},Default=1}):OnChanged(function(v)
-    getgenv().SA=({Melee="Melee",Defense="Defense",Sword="Sword",Gun="Gun",["Blox Fruit"]="Fruit"})[v]
-    Config.StatusSelected = getgenv().SA
-    SaveConfig()
-end)
-
--- Modificar Status Points Slider
-TabSt:AddSlider("Pts",{Title="Select Points",Default=Config.StatusPoints,Min=1,Max=100,Rounding=0}):OnChanged(function(v)
-    getgenv().SP=v
-    Config.StatusPoints = v
-    SaveConfig()
-end)
-
--- Modificar AutoStatus Toggle
-TabSt:AddToggle("AS",{Title="Auto Status",Default=Config.AutoStatus}):OnChanged(function(v)
-    getgenv().AS=v
-    Config.AutoStatus = v
-    SaveConfig()
-end)
-
--- =========================================
--- ADICIONAR NA SEÇÃO DE CHEST FARM
--- =========================================
-
--- Modificar ChestInput
-local ChestInput = TabEF:AddInput("ChestValue", {
-    Title = "Select Value Chest",
-    Default = tostring(Config.ChestLimit),
-    Placeholder = "Digite o número de baús",
-    Numeric = true,
-    Callback = function(value)
-        local num = tonumber(value)
-        if num and num > 0 then
-            getgenv().ChestLimit = math.floor(num)
-            Config.ChestLimit = getgenv().ChestLimit
-            SaveConfig()
-        end
-    end
-})
-
--- Modificar TG_AutoChest
-TG_AutoChest:OnChanged(function(v)
-    getgenv().AutoChest = v
-    Config.AutoChest = v
-    SaveConfig()
-    
-    if v then
-        getgenv().ChestCollected = 0
-        getgenv().IgnoredChests = {}
-    else
-        SAT()
-        RNP()
-    end
-end)
-
--- Modificar TG_HopChest
-TG_HopChest:OnChanged(function(v)
-    getgenv().HopChest = v
-    Config.HopChest = v
-    SaveConfig()
-end)
-
--- =========================================
--- ADICIONAR NA SEÇÃO DE ISLANDS
--- =========================================
-
--- Modificar IslandDropdown
-IslandDropdown:OnChanged(function(v)
-    getgenv().SelectedIsland = v
-    Config.SelectedIsland = v
-    SaveConfig()
-end)
-
--- Modificar VelocitySlider
-VelocitySlider:OnChanged(function(value)
-    local roundedValue = math.floor(value / 10 + 0.5) * 10
-    roundedValue = math.max(50, math.min(350, roundedValue))
-    
-    getgenv().TweenSpeed = roundedValue
-    Config.TweenSpeed = roundedValue
-    SaveConfig()
-    
-    if roundedValue ~= value then
-        VelocitySlider:SetValue(roundedValue)
-    end
-end)
-
--- =========================================
--- ADICIONAR NA SEÇÃO DE TEAM
--- =========================================
-
--- Modificar TeamDropdown
-TeamDropdown:OnChanged(function(v)
-    getgenv().SelectedTeam = v
-    Config.SelectedTeam = v
-    SaveConfig()
-end)
-
--- =========================================
--- ADICIONAR BOTÕES DE CONFIG NO TAB SETTINGS
--- =========================================
-
-TabSe:AddSection("Config System")
-
-TabSe:AddButton({
-    Title = "Save Config",
-    Description = "Salvar todas as configurações",
-    Callback = function()
-        SaveConfig()
-    end
-})
-
-TabSe:AddButton({
-    Title = "Load Config",
-    Description = "Carregar configurações salvas",
-    Callback = function()
-        LoadConfig()
-    end
-})
-
-TabSe:AddButton({
-    Title = "Reset Config",
-    Description = "Restaurar configurações padrão",
-    Callback = function()
-        if isfile(FILE_NAME) then
-            delfile(FILE_NAME)
-        end
-        
-        -- Resetar para valores padrão
-        Config = {
-            AutoFarm = false,
-            AutoKatakuri = false,
-            AutoBone = false,
-            FarmMode = "Farm Level",
-            WeaponType = "Melee",
-            BringMob = true,
-            AutoClick = false,
-            AutoV3 = false,
-            AutoV4 = false,
-            BringModeDistance = 350,
-            AutoStatus = false,
-            StatusSelected = "Melee",
-            StatusPoints = 1,
-            AutoChest = false,
-            HopChest = false,
-            ChestLimit = 10,
-            SelectedIsland = nil,
-            TweenSpeed = 300,
-            SelectedTeam = "Pirata"
-        }
-        
-        SaveConfig()
-        
-        Fl:Notify({
-            Title = "Config System",
-            Content = "Config resetada com sucesso!",
-            Duration = 3
-        })
-    end
-})
-
--- =========================================
--- INIT - CARREGAR CONFIG AO INICIAR
--- =========================================
-task.spawn(function()
-    task.wait(1) -- Aguardar UI carregar
-    LoadConfig()
 end)
