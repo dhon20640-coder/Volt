@@ -1137,350 +1137,7 @@ task.spawn(function()
         end
     end
 end)
-
 print("[VOLT] Elite Hunter V2 - Loaded Successfully!")
--- ============================================
--- SISTEMA DE TELEPORT BYPASS E TWEEN
--- ============================================
-
-if not game:IsLoaded() then game.Loaded:Wait() end
-
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local Plr = Players.LocalPlayer
-local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
-local CommF = Remotes:WaitForChild("CommF_", 5)
-
--- Verificação de mundo
-World1 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715
-World2 = game.PlaceId == 4442272183 or game.PlaceId == 79091703265657
-World3 = game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
-
-function GetSea() return World1 and 1 or World2 and 2 or World3 and 3 or 1 end
-
--- ============================================
--- VARIÁVEIS GLOBAIS
--- ============================================
-
-getgenv().AutoChest = false
-getgenv().StopWhenItems = false
-getgenv().HopChest = false
-getgenv().ChestLimit = 10
-getgenv().ChestCollected = 0
-getgenv().IgnoredChests = {}
-getgenv().ItemFoundNotified = false
-getgenv().TweenToIsland = false
-getgenv().SelectedIsland = nil
-getgenv().TweenSpeed = 300
-getgenv().SelectedTeam = "Pirata"
-getgenv().UsingBypassNow = false
-getgenv().BypassMessage = ""
-
--- ============================================
--- VERIFICAÇÃO DE ITENS RAROS
--- ============================================
-
-function HasFistOfDarkness() return Plr.Backpack:FindFirstChild("Fist of Darkness") or (Plr.Character and Plr.Character:FindFirstChild("Fist of Darkness")) end
-function HasGodsChalice() return Plr.Backpack:FindFirstChild("God's Chalice") or (Plr.Character and Plr.Character:FindFirstChild("God's Chalice")) end
-function HasRareItems() return HasFistOfDarkness() or HasGodsChalice() end
-function GetFoundItemName() if HasFistOfDarkness() then return "Fist of Darkness" elseif HasGodsChalice() then return "God's Chalice" end return nil end
-
--- ============================================
--- FUNÇÕES DE TELEPORT BYPASS
--- ============================================
-
-local RSvc = game:GetService("RunService")
-local AT, FC, GT, HC = nil, nil, nil, nil
-
-local function SF() if FC then FC:Disconnect(); FC = nil end end
-local function SH() if HC then HC:Disconnect(); HC = nil end end
-local function SAT() if AT then AT:Cancel(); AT = nil end SF() SH() if GT then GT:Cancel(); GT = nil end getgenv().TweenCompleted = false end
-local function DAC(char) if not char then return end for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
-
-local function TTG(hrp, tCF, spd)
-    while getgenv().UsingBypassNow do task.wait(0.1) end
-    if not hrp then return end
-    spd = spd or 250
-    SF() SH()
-    if GT then GT:Cancel(); GT = nil end
-    if AT then AT:Cancel(); AT = nil end
-    getgenv().TweenCompleted = false
-    local c = Plr.Character
-    if c then DAC(c) end
-    local dist = (hrp.Position - tCF.Position).Magnitude
-    GT = TweenService:Create(hrp, TweenInfo.new(math.max(dist / spd, 0.05), Enum.EasingStyle.Linear), {CFrame = tCF})
-    GT:Play()
-    HC = RSvc.Heartbeat:Connect(function()
-        if getgenv().UsingBypassNow then SH() if GT then GT:Cancel(); GT = nil end return end
-        if not hrp or not hrp.Parent then SH(); return end
-        local c = Plr.Character
-        if c then DAC(c) end
-        hrp.Velocity = Vector3.new(0, 0, 0)
-    end)
-    GT.Completed:Wait()
-    SH() GT = nil
-    getgenv().TweenCompleted = true
-end
-
-function CheckNearestTeleporter(aI)
-    local vcspos, min, min2 = aI.Position, math.huge, math.huge
-    local TableLocations = World3 and {["Mansion"]=Vector3.new(-12471,374,-7551),["Hydra"]=Vector3.new(5659,1013,-341),["Caslte On The Sea"]=Vector3.new(-5092,315,-3130),["Floating Turtle"]=Vector3.new(-12001,332,-8861),["Beautiful Pirate"]=Vector3.new(5319,23,-93),["Temple Of Time"]=Vector3.new(28286,14897,103)} or World2 and {["Flamingo Mansion"]=Vector3.new(-317,331,597),["Flamingo Room"]=Vector3.new(2283,15,867),["Cursed Ship"]=Vector3.new(923,125,32853),["Zombie Island"]=Vector3.new(-6509,83,-133)} or World1 and {["Sky Island 1"]=Vector3.new(-4652,873,-1754),["Sky Island 2"]=Vector3.new(-7895,5547,-380),["Under Water Island"]=Vector3.new(61164,5,1820),["Under Water Island Entrace"]=Vector3.new(3865,5,-1926)} or {}
-    local TableLocations2 = {}
-    for r, v in pairs(TableLocations) do TableLocations2[r] = (v - vcspos).Magnitude end
-    for r, v in pairs(TableLocations2) do if v < min then min, min2 = v, v end end
-    local choose
-    for r, v in pairs(TableLocations2) do if v <= min then choose = TableLocations[r] end end
-    if min2 <= (vcspos - Plr.Character.HumanoidRootPart.Position).Magnitude then return choose end
-end
-
-function requestEntrance(aJ) CommF:InvokeServer("requestEntrance", aJ) local old = Plr.Character.HumanoidRootPart.CFrame Plr.Character.HumanoidRootPart.CFrame = CFrame.new(old.X, old.Y + 50, old.Z) task.wait(0.5) end
-
-function topos(Tween_Pos)
-    pcall(function()
-        while getgenv().UsingBypassNow do task.wait(0.1) end
-        local char = Plr.Character
-        if not char or not char:FindFirstChild("Humanoid") or not char:FindFirstChild("HumanoidRootPart") or char.Humanoid.Health <= 0 then return end
-        local hrp = char.HumanoidRootPart
-        local Distance = (Tween_Pos.Position - hrp.Position).Magnitude
-        if Distance <= 300 then hrp.CFrame = Tween_Pos return end
-        local aM = CheckNearestTeleporter(Tween_Pos)
-        if aM then
-            getgenv().UsingBypassNow = true
-            getgenv().BypassMessage = "Usando Bypass Teleport..."
-            pcall(function() SAT() end)
-            requestEntrance(aM)
-            task.wait(1)
-            getgenv().UsingBypassNow = false
-            getgenv().BypassMessage = "Bypass concluído, voltando ao Tween"
-        end
-        TTG(hrp, Tween_Pos, getgenv().TweenSpeed or 300)
-    end)
-end
-
--- ============================================
--- COORDENADAS DAS ILHAS
--- ============================================
-
-local IslandPositions = {["StartingArea"]=CFrame.new(1071.2,16.3,1426.86),["Jungle"]=CFrame.new(-1192.07,50,-51.23),["Pirate Village"]=CFrame.new(-1147,4.8,3833.5),["Desert"]=CFrame.new(944.15,6.4,4373.3),["Frozen Village"]=CFrame.new(1253,88.3,-1344.6),["MarineFord"]=CFrame.new(-4914.8,50.4,4281.7),["Colosseum"]=CFrame.new(-1427.6,7.3,-2792.6),["Sky Island 1"]=CFrame.new(-4970.21,717.7,-2622.35),["Sky Island 2"]=CFrame.new(-7894.6,5547.5,-380.29),["Sky Island 3"]=CFrame.new(-7894.6,5547.5,-380.29),["Prison"]=CFrame.new(4854.16,5.7,734.85),["Magma Village"]=CFrame.new(-5247.7,12.8,8504.6),["Under Water Island"]=CFrame.new(61163.8,11.6,1819.7),["Upper Skylands"]=CFrame.new(-7894.6,5547.5,-380.29),["Fountain City"]=CFrame.new(5127.1,59.1,4105.07),["Kingdom of Rose"]=CFrame.new(-246.7,38.4,5373.8),["Cafe"]=CFrame.new(-387.6,73.1,298.9),["Mansion"]=CFrame.new(-12550.5,337.2,-7449.6),["Graveyard"]=CFrame.new(-5320.9,47.3,-2496.5),["Snow Mountain"]=CFrame.new(753.7,408.2,-5274.6),["Hot and Cold"]=CFrame.new(-6063.9,15.3,-5127.2),["Cursed Ship"]=CFrame.new(923.2,125.9,32852.8),["Ice Castle"]=CFrame.new(5812.6,88.7,-6184.5),["Forgotten Island"]=CFrame.new(-3053.9,236.4,-10145.3),["Dark Arena"]=CFrame.new(3686.0,117.7,-3220.0),["Green Zone"]=CFrame.new(-2448.5,73.0,-3210.1),["Swan Room"]=CFrame.new(2284.91,15.2,905.48),["Port Town"]=CFrame.new(-290.7,6.7,5343.5),["Hydra Island"]=CFrame.new(5228.8,604.2,-345.0),["Great Tree"]=CFrame.new(2681.2,1682.8,-7190.9),["Castle On The Sea"]=CFrame.new(-5075.5,314.5,-2952.3),["Floating Turtle"]=CFrame.new(-13274.5,332.0,-7632.1),["Haunted Castle"]=CFrame.new(-9515.7,172.1,5613.1),["Sea of Treats"]=CFrame.new(-2077.3,252.6,-12373.9),["Tiki Outpost"]=CFrame.new(-16542.4,55.7,1044.4)}
-
-local IslandsBySea = {[1]={"StartingArea","Jungle","Pirate Village","Desert","Frozen Village","MarineFord","Colosseum","Sky Island 1","Sky Island 2","Sky Island 3","Prison","Magma Village","Under Water Island","Upper Skylands","Fountain City"},[2]={"Kingdom of Rose","Cafe","Mansion","Graveyard","Snow Mountain","Hot and Cold","Cursed Ship","Ice Castle","Forgotten Island","Dark Arena","Green Zone","Swan Room"},[3]={"Port Town","Hydra Island","Great Tree","Castle On The Sea","Floating Turtle","Haunted Castle","Sea of Treats","Tiki Outpost"}}
-
--- ============================================
--- SEÇÃO DE CHEST FARM
--- ============================================
-
-TabEF:AddSection("Chest Farm")
-
-TabEF:AddInput("ChestValue",{Title="Select Value Chest",Default="10",Placeholder="Digite o número de baús",Numeric=true,Callback=function(value) local num=tonumber(value) if num and num>0 then getgenv().ChestLimit=math.floor(num) end end})
-
-local TG_AutoChest=TabEF:AddToggle("AutoChest",{Title="Auto Chest",Default=false})
-TG_AutoChest:OnChanged(function(v) getgenv().AutoChest=v if v then getgenv().ChestCollected=0 getgenv().IgnoredChests={} getgenv().ItemFoundNotified=false else SAT() RNP() end end)
-
-local TG_StopWhenItems=TabEF:AddToggle("StopWhenItems",{Title="Stop When Items",Default=false})
-TG_StopWhenItems:OnChanged(function(v) getgenv().StopWhenItems=v if v then getgenv().ItemFoundNotified=false end end)
-
-local TG_HopChest=TabEF:AddToggle("HopChest",{Title="Hop Chest",Default=false})
-TG_HopChest:OnChanged(function(v) getgenv().HopChest=v end)
-
-local function GetChests()
-    local chests={}
-    for _,obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj.Name:lower():find("chest") and not getgenv().IgnoredChests[obj] then
-            if obj:FindFirstChild("TouchInterest",true) or obj:FindFirstChildOfClass("ClickDetector",true) or obj:FindFirstChildOfClass("ProximityPrompt",true) then
-                table.insert(chests,obj)
-            end
-        end
-    end
-    return chests
-end
-
-local function GetChestPosition(chest)
-    if chest:IsA("BasePart") then return chest.CFrame end
-    if chest:IsA("Model") then
-        if chest.PrimaryPart then return chest.PrimaryPart.CFrame end
-        local part=chest:FindFirstChildWhichIsA("BasePart")
-        if part then return part.CFrame end
-    end
-    return nil
-end
-
--- Loop de verificação de itens raros
-task.spawn(function()
-    while task.wait(0.5) do
-        if getgenv().StopWhenItems and getgenv().AutoChest then
-            if HasRareItems() and not getgenv().ItemFoundNotified then
-                local itemName=GetFoundItemName()
-                getgenv().AutoChest=false
-                TG_AutoChest:SetValue(false)
-                if getgenv().HopChest then getgenv().HopChest=false TG_HopChest:SetValue(false) end
-                SAT() RNP()
-                getgenv().ItemFoundNotified=true
-                Fl:Notify({Title="Item Raro Encontrado!",Content="Item encontrado: "..itemName.."\nAuto Chest e Hop desligados.",Duration=8})
-            end
-        end
-    end
-end)
-
--- Loop principal do Auto Chest
-task.spawn(function()
-    while task.wait(0.1) do
-        if getgenv().AutoChest then
-            pcall(function()
-                if getgenv().UsingBypassNow then return end
-                if getgenv().StopWhenItems and HasRareItems() then return end
-                if getgenv().ChestCollected>=getgenv().ChestLimit then
-                    getgenv().AutoChest=false
-                    TG_AutoChest:SetValue(false)
-                    SAT() RNP()
-                    if getgenv().HopChest then
-                        Fl:Notify({Title="Chest Farm",Content="Hop Chest em 5s...",Duration=5})
-                        task.wait(5)
-                        game:GetService("TeleportService"):Teleport(game.PlaceId,Plr)
-                    end
-                    return
-                end
-                local char=Plr.Character
-                local hrp=char and char:FindFirstChild("HumanoidRootPart")
-                local hum=char and char:FindFirstChild("Humanoid")
-                if not char or not hrp or not hum or hum.Health<=0 then return end
-                local chests=GetChests()
-                if #chests>0 then
-                    local nearestChest,nearestDistance=nil,math.huge
-                    for _,chest in pairs(chests) do
-                        local chestCFrame=GetChestPosition(chest)
-                        if chestCFrame then
-                            local distance=(hrp.Position-chestCFrame.Position).Magnitude
-                            if distance<nearestDistance then
-                                nearestDistance=distance
-                                nearestChest=chest
-                            end
-                        end
-                    end
-                    if nearestChest then
-                        local chestCFrame=GetChestPosition(nearestChest)
-                        if chestCFrame then
-                            local chestReference=nearestChest
-                            DAC(char)
-                            hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-                            topos(chestCFrame)
-                            task.wait(1)
-                            getgenv().IgnoredChests[chestReference]=true
-                            getgenv().ChestCollected=getgenv().ChestCollected+1
-                        end
-                    end
-                else
-                    if getgenv().ChestCollected>=getgenv().ChestLimit then
-                        getgenv().AutoChest=false
-                        TG_AutoChest:SetValue(false)
-                        SAT() RNP()
-                        if getgenv().HopChest then
-                            Fl:Notify({Title="Chest Farm",Content="Hop Chest em 5s...",Duration=5})
-                            task.wait(5)
-                            game:GetService("TeleportService"):Teleport(game.PlaceId,Plr)
-                        end
-                    else
-                        task.wait(5)
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- ============================================
--- MÓDULO DE ILHAS
--- ============================================
-
-TabLP:AddSection("Tab Island")
-
-local function GetCurrentSeaIslands() return IslandsBySea[GetSea()] or {} end
-
-local IslandDropdown=TabLP:AddDropdown("IslandSel",{Title="Select Island",Values=GetCurrentSeaIslands(),Default=1})
-IslandDropdown:OnChanged(function(v) getgenv().SelectedIsland=v end)
-
-local TG_Island=TabLP:AddToggle("TweenIsland",{Title="Tween to Island",Default=false})
-TG_Island:OnChanged(function(v)
-    getgenv().TweenToIsland=v
-    if v then
-        task.spawn(function()
-            if not getgenv().SelectedIsland then TG_Island:SetValue(false) return end
-            local targetCFrame=IslandPositions[getgenv().SelectedIsland]
-            if not targetCFrame then TG_Island:SetValue(false) return end
-            local c=Plr.Character
-            local hrp=c and c:FindFirstChild("HumanoidRootPart")
-            if not c or not hrp then TG_Island:SetValue(false) return end
-            topos(targetCFrame)
-            while getgenv().TweenToIsland and c and hrp do
-                local dist=(hrp.Position-targetCFrame.Position).Magnitude
-                if dist<=10 then break end
-                task.wait(0.1)
-            end
-            task.wait(0.5)
-            TG_Island:SetValue(false)
-            getgenv().TweenToIsland=false
-            SAT()
-        end)
-    else
-        SAT()
-    end
-end)
-
-local VelocitySlider=TabLP:AddSlider("TweenVelocity",{Title="Select Velocity Tween",Default=300,Min=50,Max=350,Rounding=0})
-VelocitySlider:OnChanged(function(value)
-    local roundedValue=math.floor(value/10+0.5)*10
-    roundedValue=math.max(50,math.min(350,roundedValue))
-    getgenv().TweenSpeed=roundedValue
-    TweenSpeed=roundedValue
-    if roundedValue~=value then VelocitySlider:SetValue(roundedValue) end
-end)
-
-task.spawn(function()
-    local lastSea=GetSea()
-    while task.wait(5) do
-        local currentSea=GetSea()
-        if currentSea~=lastSea then
-            lastSea=currentSea
-            local newIslands=GetCurrentSeaIslands()
-            IslandDropdown:SetValues(newIslands)
-            getgenv().SelectedIsland=newIslands[1]
-        end
-    end
-end)
-
--- ============================================
--- SEÇÃO DE MUDANÇA DE TIME
--- ============================================
-
-TabLP:AddSection("Tab Time")
-
-local function GetCurrentTeam() local playerTeam=Plr.Team if playerTeam then return playerTeam.Name end return nil end
-
-local TeamDropdown=TabLP:AddDropdown("TeamSel",{Title="Select Time",Values={"Pirata","Marine"},Default=1})
-TeamDropdown:OnChanged(function(v) getgenv().SelectedTeam=v end)
-
-local TG_ChangeTeam=TabLP:AddToggle("ChangeTeam",{Title="Change Time",Default=false})
-TG_ChangeTeam:OnChanged(function(v)
-    if v then
-        task.spawn(function()
-            local currentTeam=GetCurrentTeam()
-            local selectedTeam=getgenv().SelectedTeam
-            if (selectedTeam=="Pirata" and currentTeam=="Pirates") or (selectedTeam=="Marine" and currentTeam=="Marines") then TG_ChangeTeam:SetValue(false) return end
-            local npcName=selectedTeam=="Pirata" and "Pirate Recruiter" or "Marine Recruiter"
-            local npc=workspace:FindFirstChild(npcName,true)
-            if npc then
-                local args={[1]=npcName}
-                for _,remote in pairs(ReplicatedStorage:GetDescendants()) do
-                    if remote:IsA("RemoteEvent") and (remote.Name=="SetTeam" or remote.Name=="ChangeTeam" or remote.Name:find("Team")) then
-                        pcall(function() remote:FireServer(unpack(args)) end)
-                    end
-                end
-                task.wait(1)
-            end
-            TG_ChangeTeam:SetValue(false)
-        end)
-    end
-end)
 -- Módulo: Estilo de Luta, TTK e Boss Farm - Nexus Hub V3
 local RS = game:GetService("ReplicatedStorage")
 local TS = game:GetService("TweenService")
@@ -2152,6 +1809,348 @@ task.spawn(function()
             elseif getgenv().AB then
                 HMR(BonM, "BoneIndex", BS)
             end
+        end)
+    end
+end)
+-- ============================================
+-- SISTEMA DE TELEPORT BYPASS E TWEEN
+-- ============================================
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Plr = Players.LocalPlayer
+local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+local CommF = Remotes:WaitForChild("CommF_", 5)
+
+-- Verificação de mundo
+World1 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715
+World2 = game.PlaceId == 4442272183 or game.PlaceId == 79091703265657
+World3 = game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
+
+function GetSea() return World1 and 1 or World2 and 2 or World3 and 3 or 1 end
+
+-- ============================================
+-- VARIÁVEIS GLOBAIS
+-- ============================================
+
+getgenv().AutoChest = false
+getgenv().StopWhenItems = false
+getgenv().HopChest = false
+getgenv().ChestLimit = 10
+getgenv().ChestCollected = 0
+getgenv().IgnoredChests = {}
+getgenv().ItemFoundNotified = false
+getgenv().TweenToIsland = false
+getgenv().SelectedIsland = nil
+getgenv().TweenSpeed = 300
+getgenv().SelectedTeam = "Pirata"
+getgenv().UsingBypassNow = false
+getgenv().BypassMessage = ""
+
+-- ============================================
+-- VERIFICAÇÃO DE ITENS RAROS
+-- ============================================
+
+function HasFistOfDarkness() return Plr.Backpack:FindFirstChild("Fist of Darkness") or (Plr.Character and Plr.Character:FindFirstChild("Fist of Darkness")) end
+function HasGodsChalice() return Plr.Backpack:FindFirstChild("God's Chalice") or (Plr.Character and Plr.Character:FindFirstChild("God's Chalice")) end
+function HasRareItems() return HasFistOfDarkness() or HasGodsChalice() end
+function GetFoundItemName() if HasFistOfDarkness() then return "Fist of Darkness" elseif HasGodsChalice() then return "God's Chalice" end return nil end
+
+-- ============================================
+-- FUNÇÕES DE TELEPORT BYPASS
+-- ============================================
+
+local RSvc = game:GetService("RunService")
+local AT, FC, GT, HC = nil, nil, nil, nil
+
+local function SF() if FC then FC:Disconnect(); FC = nil end end
+local function SH() if HC then HC:Disconnect(); HC = nil end end
+local function SAT() if AT then AT:Cancel(); AT = nil end SF() SH() if GT then GT:Cancel(); GT = nil end getgenv().TweenCompleted = false end
+local function DAC(char) if not char then return end for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
+
+local function TTG(hrp, tCF, spd)
+    while getgenv().UsingBypassNow do task.wait(0.1) end
+    if not hrp then return end
+    spd = spd or 250
+    SF() SH()
+    if GT then GT:Cancel(); GT = nil end
+    if AT then AT:Cancel(); AT = nil end
+    getgenv().TweenCompleted = false
+    local c = Plr.Character
+    if c then DAC(c) end
+    local dist = (hrp.Position - tCF.Position).Magnitude
+    GT = TweenService:Create(hrp, TweenInfo.new(math.max(dist / spd, 0.05), Enum.EasingStyle.Linear), {CFrame = tCF})
+    GT:Play()
+    HC = RSvc.Heartbeat:Connect(function()
+        if getgenv().UsingBypassNow then SH() if GT then GT:Cancel(); GT = nil end return end
+        if not hrp or not hrp.Parent then SH(); return end
+        local c = Plr.Character
+        if c then DAC(c) end
+        hrp.Velocity = Vector3.new(0, 0, 0)
+    end)
+    GT.Completed:Wait()
+    SH() GT = nil
+    getgenv().TweenCompleted = true
+end
+
+function CheckNearestTeleporter(aI)
+    local vcspos, min, min2 = aI.Position, math.huge, math.huge
+    local TableLocations = World3 and {["Mansion"]=Vector3.new(-12471,374,-7551),["Hydra"]=Vector3.new(5659,1013,-341),["Caslte On The Sea"]=Vector3.new(-5092,315,-3130),["Floating Turtle"]=Vector3.new(-12001,332,-8861),["Beautiful Pirate"]=Vector3.new(5319,23,-93),["Temple Of Time"]=Vector3.new(28286,14897,103)} or World2 and {["Flamingo Mansion"]=Vector3.new(-317,331,597),["Flamingo Room"]=Vector3.new(2283,15,867),["Cursed Ship"]=Vector3.new(923,125,32853),["Zombie Island"]=Vector3.new(-6509,83,-133)} or World1 and {["Sky Island 1"]=Vector3.new(-4652,873,-1754),["Sky Island 2"]=Vector3.new(-7895,5547,-380),["Under Water Island"]=Vector3.new(61164,5,1820),["Under Water Island Entrace"]=Vector3.new(3865,5,-1926)} or {}
+    local TableLocations2 = {}
+    for r, v in pairs(TableLocations) do TableLocations2[r] = (v - vcspos).Magnitude end
+    for r, v in pairs(TableLocations2) do if v < min then min, min2 = v, v end end
+    local choose
+    for r, v in pairs(TableLocations2) do if v <= min then choose = TableLocations[r] end end
+    if min2 <= (vcspos - Plr.Character.HumanoidRootPart.Position).Magnitude then return choose end
+end
+
+function requestEntrance(aJ) CommF:InvokeServer("requestEntrance", aJ) local old = Plr.Character.HumanoidRootPart.CFrame Plr.Character.HumanoidRootPart.CFrame = CFrame.new(old.X, old.Y + 50, old.Z) task.wait(0.5) end
+
+function topos(Tween_Pos)
+    pcall(function()
+        while getgenv().UsingBypassNow do task.wait(0.1) end
+        local char = Plr.Character
+        if not char or not char:FindFirstChild("Humanoid") or not char:FindFirstChild("HumanoidRootPart") or char.Humanoid.Health <= 0 then return end
+        local hrp = char.HumanoidRootPart
+        local Distance = (Tween_Pos.Position - hrp.Position).Magnitude
+        if Distance <= 300 then hrp.CFrame = Tween_Pos return end
+        local aM = CheckNearestTeleporter(Tween_Pos)
+        if aM then
+            getgenv().UsingBypassNow = true
+            getgenv().BypassMessage = "Usando Bypass Teleport..."
+            pcall(function() SAT() end)
+            requestEntrance(aM)
+            task.wait(1)
+            getgenv().UsingBypassNow = false
+            getgenv().BypassMessage = "Bypass concluído, voltando ao Tween"
+        end
+        TTG(hrp, Tween_Pos, getgenv().TweenSpeed or 300)
+    end)
+end
+
+-- ============================================
+-- COORDENADAS DAS ILHAS
+-- ============================================
+
+local IslandPositions = {["StartingArea"]=CFrame.new(1071.2,16.3,1426.86),["Jungle"]=CFrame.new(-1192.07,50,-51.23),["Pirate Village"]=CFrame.new(-1147,4.8,3833.5),["Desert"]=CFrame.new(944.15,6.4,4373.3),["Frozen Village"]=CFrame.new(1253,88.3,-1344.6),["MarineFord"]=CFrame.new(-4914.8,50.4,4281.7),["Colosseum"]=CFrame.new(-1427.6,7.3,-2792.6),["Sky Island 1"]=CFrame.new(-4970.21,717.7,-2622.35),["Sky Island 2"]=CFrame.new(-7894.6,5547.5,-380.29),["Sky Island 3"]=CFrame.new(-7894.6,5547.5,-380.29),["Prison"]=CFrame.new(4854.16,5.7,734.85),["Magma Village"]=CFrame.new(-5247.7,12.8,8504.6),["Under Water Island"]=CFrame.new(61163.8,11.6,1819.7),["Upper Skylands"]=CFrame.new(-7894.6,5547.5,-380.29),["Fountain City"]=CFrame.new(5127.1,59.1,4105.07),["Kingdom of Rose"]=CFrame.new(-246.7,38.4,5373.8),["Cafe"]=CFrame.new(-387.6,73.1,298.9),["Mansion"]=CFrame.new(-12550.5,337.2,-7449.6),["Graveyard"]=CFrame.new(-5320.9,47.3,-2496.5),["Snow Mountain"]=CFrame.new(753.7,408.2,-5274.6),["Hot and Cold"]=CFrame.new(-6063.9,15.3,-5127.2),["Cursed Ship"]=CFrame.new(923.2,125.9,32852.8),["Ice Castle"]=CFrame.new(5812.6,88.7,-6184.5),["Forgotten Island"]=CFrame.new(-3053.9,236.4,-10145.3),["Dark Arena"]=CFrame.new(3686.0,117.7,-3220.0),["Green Zone"]=CFrame.new(-2448.5,73.0,-3210.1),["Swan Room"]=CFrame.new(2284.91,15.2,905.48),["Port Town"]=CFrame.new(-290.7,6.7,5343.5),["Hydra Island"]=CFrame.new(5228.8,604.2,-345.0),["Great Tree"]=CFrame.new(2681.2,1682.8,-7190.9),["Castle On The Sea"]=CFrame.new(-5075.5,314.5,-2952.3),["Floating Turtle"]=CFrame.new(-13274.5,332.0,-7632.1),["Haunted Castle"]=CFrame.new(-9515.7,172.1,5613.1),["Sea of Treats"]=CFrame.new(-2077.3,252.6,-12373.9),["Tiki Outpost"]=CFrame.new(-16542.4,55.7,1044.4)}
+
+local IslandsBySea = {[1]={"StartingArea","Jungle","Pirate Village","Desert","Frozen Village","MarineFord","Colosseum","Sky Island 1","Sky Island 2","Sky Island 3","Prison","Magma Village","Under Water Island","Upper Skylands","Fountain City"},[2]={"Kingdom of Rose","Cafe","Mansion","Graveyard","Snow Mountain","Hot and Cold","Cursed Ship","Ice Castle","Forgotten Island","Dark Arena","Green Zone","Swan Room"},[3]={"Port Town","Hydra Island","Great Tree","Castle On The Sea","Floating Turtle","Haunted Castle","Sea of Treats","Tiki Outpost"}}
+
+-- ============================================
+-- SEÇÃO DE CHEST FARM
+-- ============================================
+
+TabEF:AddSection("Chest Farm")
+
+TabEF:AddInput("ChestValue",{Title="Select Value Chest",Default="10",Placeholder="Digite o número de baús",Numeric=true,Callback=function(value) local num=tonumber(value) if num and num>0 then getgenv().ChestLimit=math.floor(num) end end})
+
+local TG_AutoChest=TabEF:AddToggle("AutoChest",{Title="Auto Chest",Default=false})
+TG_AutoChest:OnChanged(function(v) getgenv().AutoChest=v if v then getgenv().ChestCollected=0 getgenv().IgnoredChests={} getgenv().ItemFoundNotified=false else SAT() RNP() end end)
+
+local TG_StopWhenItems=TabEF:AddToggle("StopWhenItems",{Title="Stop When Items",Default=false})
+TG_StopWhenItems:OnChanged(function(v) getgenv().StopWhenItems=v if v then getgenv().ItemFoundNotified=false end end)
+
+local TG_HopChest=TabEF:AddToggle("HopChest",{Title="Hop Chest",Default=false})
+TG_HopChest:OnChanged(function(v) getgenv().HopChest=v end)
+
+local function GetChests()
+    local chests={}
+    for _,obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name:lower():find("chest") and not getgenv().IgnoredChests[obj] then
+            if obj:FindFirstChild("TouchInterest",true) or obj:FindFirstChildOfClass("ClickDetector",true) or obj:FindFirstChildOfClass("ProximityPrompt",true) then
+                table.insert(chests,obj)
+            end
+        end
+    end
+    return chests
+end
+
+local function GetChestPosition(chest)
+    if chest:IsA("BasePart") then return chest.CFrame end
+    if chest:IsA("Model") then
+        if chest.PrimaryPart then return chest.PrimaryPart.CFrame end
+        local part=chest:FindFirstChildWhichIsA("BasePart")
+        if part then return part.CFrame end
+    end
+    return nil
+end
+
+-- Loop de verificação de itens raros
+task.spawn(function()
+    while task.wait(0.5) do
+        if getgenv().StopWhenItems and getgenv().AutoChest then
+            if HasRareItems() and not getgenv().ItemFoundNotified then
+                local itemName=GetFoundItemName()
+                getgenv().AutoChest=false
+                TG_AutoChest:SetValue(false)
+                if getgenv().HopChest then getgenv().HopChest=false TG_HopChest:SetValue(false) end
+                SAT() RNP()
+                getgenv().ItemFoundNotified=true
+                Fl:Notify({Title="Item Raro Encontrado!",Content="Item encontrado: "..itemName.."\nAuto Chest e Hop desligados.",Duration=8})
+            end
+        end
+    end
+end)
+
+-- Loop principal do Auto Chest
+task.spawn(function()
+    while task.wait(0.1) do
+        if getgenv().AutoChest then
+            pcall(function()
+                if getgenv().UsingBypassNow then return end
+                if getgenv().StopWhenItems and HasRareItems() then return end
+                if getgenv().ChestCollected>=getgenv().ChestLimit then
+                    getgenv().AutoChest=false
+                    TG_AutoChest:SetValue(false)
+                    SAT() RNP()
+                    if getgenv().HopChest then
+                        Fl:Notify({Title="Chest Farm",Content="Hop Chest em 5s...",Duration=5})
+                        task.wait(5)
+                        game:GetService("TeleportService"):Teleport(game.PlaceId,Plr)
+                    end
+                    return
+                end
+                local char=Plr.Character
+                local hrp=char and char:FindFirstChild("HumanoidRootPart")
+                local hum=char and char:FindFirstChild("Humanoid")
+                if not char or not hrp or not hum or hum.Health<=0 then return end
+                local chests=GetChests()
+                if #chests>0 then
+                    local nearestChest,nearestDistance=nil,math.huge
+                    for _,chest in pairs(chests) do
+                        local chestCFrame=GetChestPosition(chest)
+                        if chestCFrame then
+                            local distance=(hrp.Position-chestCFrame.Position).Magnitude
+                            if distance<nearestDistance then
+                                nearestDistance=distance
+                                nearestChest=chest
+                            end
+                        end
+                    end
+                    if nearestChest then
+                        local chestCFrame=GetChestPosition(nearestChest)
+                        if chestCFrame then
+                            local chestReference=nearestChest
+                            DAC(char)
+                            hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+                            topos(chestCFrame)
+                            task.wait(1)
+                            getgenv().IgnoredChests[chestReference]=true
+                            getgenv().ChestCollected=getgenv().ChestCollected+1
+                        end
+                    end
+                else
+                    if getgenv().ChestCollected>=getgenv().ChestLimit then
+                        getgenv().AutoChest=false
+                        TG_AutoChest:SetValue(false)
+                        SAT() RNP()
+                        if getgenv().HopChest then
+                            Fl:Notify({Title="Chest Farm",Content="Hop Chest em 5s...",Duration=5})
+                            task.wait(5)
+                            game:GetService("TeleportService"):Teleport(game.PlaceId,Plr)
+                        end
+                    else
+                        task.wait(5)
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ============================================
+-- MÓDULO DE ILHAS
+-- ============================================
+
+TabLP:AddSection("Tab Island")
+
+local function GetCurrentSeaIslands() return IslandsBySea[GetSea()] or {} end
+
+local IslandDropdown=TabLP:AddDropdown("IslandSel",{Title="Select Island",Values=GetCurrentSeaIslands(),Default=1})
+IslandDropdown:OnChanged(function(v) getgenv().SelectedIsland=v end)
+
+local TG_Island=TabLP:AddToggle("TweenIsland",{Title="Tween to Island",Default=false})
+TG_Island:OnChanged(function(v)
+    getgenv().TweenToIsland=v
+    if v then
+        task.spawn(function()
+            if not getgenv().SelectedIsland then TG_Island:SetValue(false) return end
+            local targetCFrame=IslandPositions[getgenv().SelectedIsland]
+            if not targetCFrame then TG_Island:SetValue(false) return end
+            local c=Plr.Character
+            local hrp=c and c:FindFirstChild("HumanoidRootPart")
+            if not c or not hrp then TG_Island:SetValue(false) return end
+            topos(targetCFrame)
+            while getgenv().TweenToIsland and c and hrp do
+                local dist=(hrp.Position-targetCFrame.Position).Magnitude
+                if dist<=10 then break end
+                task.wait(0.1)
+            end
+            task.wait(0.5)
+            TG_Island:SetValue(false)
+            getgenv().TweenToIsland=false
+            SAT()
+        end)
+    else
+        SAT()
+    end
+end)
+
+local VelocitySlider=TabLP:AddSlider("TweenVelocity",{Title="Select Velocity Tween",Default=300,Min=50,Max=350,Rounding=0})
+VelocitySlider:OnChanged(function(value)
+    local roundedValue=math.floor(value/10+0.5)*10
+    roundedValue=math.max(50,math.min(350,roundedValue))
+    getgenv().TweenSpeed=roundedValue
+    TweenSpeed=roundedValue
+    if roundedValue~=value then VelocitySlider:SetValue(roundedValue) end
+end)
+
+task.spawn(function()
+    local lastSea=GetSea()
+    while task.wait(5) do
+        local currentSea=GetSea()
+        if currentSea~=lastSea then
+            lastSea=currentSea
+            local newIslands=GetCurrentSeaIslands()
+            IslandDropdown:SetValues(newIslands)
+            getgenv().SelectedIsland=newIslands[1]
+        end
+    end
+end)
+
+-- ============================================
+-- SEÇÃO DE MUDANÇA DE TIME
+-- ============================================
+
+TabLP:AddSection("Tab Time")
+
+local function GetCurrentTeam() local playerTeam=Plr.Team if playerTeam then return playerTeam.Name end return nil end
+
+local TeamDropdown=TabLP:AddDropdown("TeamSel",{Title="Select Time",Values={"Pirata","Marine"},Default=1})
+TeamDropdown:OnChanged(function(v) getgenv().SelectedTeam=v end)
+
+local TG_ChangeTeam=TabLP:AddToggle("ChangeTeam",{Title="Change Time",Default=false})
+TG_ChangeTeam:OnChanged(function(v)
+    if v then
+        task.spawn(function()
+            local currentTeam=GetCurrentTeam()
+            local selectedTeam=getgenv().SelectedTeam
+            if (selectedTeam=="Pirata" and currentTeam=="Pirates") or (selectedTeam=="Marine" and currentTeam=="Marines") then TG_ChangeTeam:SetValue(false) return end
+            local npcName=selectedTeam=="Pirata" and "Pirate Recruiter" or "Marine Recruiter"
+            local npc=workspace:FindFirstChild(npcName,true)
+            if npc then
+                local args={[1]=npcName}
+                for _,remote in pairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and (remote.Name=="SetTeam" or remote.Name=="ChangeTeam" or remote.Name:find("Team")) then
+                        pcall(function() remote:FireServer(unpack(args)) end)
+                    end
+                end
+                task.wait(1)
+            end
+            TG_ChangeTeam:SetValue(false)
         end)
     end
 end)
