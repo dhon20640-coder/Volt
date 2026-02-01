@@ -1481,4 +1481,677 @@ TG_ChangeTeam:OnChanged(function(v)
         end)
     end
 end)
+-- Módulo: Estilo de Luta, TTK e Boss Farm - Nexus Hub V3
+local RS = game:GetService("ReplicatedStorage")
+local TS = game:GetService("TweenService")
+local RSvc = game:GetService("RunService")
+local Plr = game:GetService("Players").LocalPlayer
+local WS = game:GetService("Workspace")
 
+local Remotes = RS:WaitForChild("Remotes", 5)
+local CF = Remotes:FindFirstChild("CommF_")
+
+-- Configurações globais
+getgenv().AutoBuyLegendarySword = false
+getgenv().SelectBoss = nil
+getgenv().AutoFarmBoss = false
+getgenv().AutoFarmAllBoss = false
+
+-- Detecção de Sea
+local placeId = game.PlaceId
+World1 = placeId == 2753915549 or placeId == 85211729168715
+World2 = placeId == 4442272183 or placeId == 79091703265657
+World3 = placeId == 7449423635 or placeId == 100117331123089
+
+function GetSea()
+    if World1 then return 1 
+    elseif World2 then return 2 
+    elseif World3 then return 3 
+    else return 1 end
+end
+
+-- Sistema de Tween Anti-Tremor
+local activeTween, heartbeatConn = nil, nil
+
+local function StopTweenAndHeartbeat()
+    if activeTween then activeTween:Cancel() activeTween = nil end
+    if heartbeatConn then heartbeatConn:Disconnect() heartbeatConn = nil end
+end
+
+local function TweenToPosition(targetCFrame)
+    local char, hrp = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    StopTweenAndHeartbeat()
+    local distance = (hrp.Position - targetCFrame.Position).Magnitude
+    activeTween = TS:Create(hrp, TweenInfo.new(distance / 250, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+    activeTween:Play()
+    heartbeatConn = RSvc.Heartbeat:Connect(function()
+        if not hrp or not hrp.Parent then StopTweenAndHeartbeat() return end
+        hrp.Velocity = Vector3.new(0, 0, 0)
+    end)
+    return activeTween
+end
+
+local function SetNoClip(char, enabled)
+    if not char then return end
+    for _, p in ipairs(char:GetDescendants()) do
+        if p:IsA("BasePart") and (p.Name == "HumanoidRootPart" or p.Name == "UpperTorso" or p.Name == "LowerTorso" or p.Name == "Torso") then
+            p.CanCollide = not enabled
+        end
+    end
+end
+
+local function EquipWeapon()
+    pcall(function()
+        local c, bp = Plr.Character, Plr.Backpack
+        if not c or not c:FindFirstChild("Humanoid") then return end
+        local tool = nil
+        if getgenv().WP == "Sword" then
+            for _, v in ipairs(bp:GetChildren()) do
+                if v:IsA("Tool") and (v.ToolTip == "Sword" or v.Name:find("Katana") or v.Name:find("Blade")) then
+                    tool = v break
+                end
+            end
+        end
+        if not tool then tool = bp:FindFirstChild("Combat") end
+        if tool then c.Humanoid:EquipTool(tool) end
+    end)
+end
+
+-- Posições dos NPCs de Fighting Styles
+local FightingStyleNPCs = {
+    ["Dark Step"] = {pos = CFrame.new(-983.618, 12.45, 3990.463), sea = 1},
+    ["Electro"] = {pos = CFrame.new(-5382.782, 12.55, -2148.818), sea = 1},
+    ["Fishman Karate"] = {pos = CFrame.new(61586.722, 18.9, 989.584), sea = 1},
+    ["Dragon Breath"] = {pos = CFrame.new(699.572, 186.99, 656.837), sea = 2},
+    ["Death Step"] = {pos = CFrame.new(6358.787, 296.661, -6766.079), sea = 2},
+    ["Sharkman Karate"] = {pos = CFrame.new(-2602.152, 239.212, -10315.58), sea = 2},
+    ["Electric Claw"] = {pos = CFrame.new(6358.787, 296.661, -6766.079), sea = 3},
+    ["Dragon Talon"] = {pos = CFrame.new(5666.225, 1211.307, 866.386), sea = 3},
+    ["Godhuman"] = {pos = CFrame.new(-13777.618, 334.652, -9879.684), sea = 3},
+    ["Sanguine Art"] = {pos = CFrame.new(-16515.053, 23.17, -193.006), sea = 3}
+}
+
+local function BuyFightingStyle(styleName, remoteCommand)
+    local styleData = FightingStyleNPCs[styleName]
+    if not styleData then return end
+    
+    local currentSea = GetSea()
+    if currentSea < styleData.sea then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Volt Hub V3",
+            Text = "Você precisa estar no Sea " .. styleData.sea .. " para comprar " .. styleName,
+            Duration = 5
+        })
+        return
+    end
+    
+    local tween = TweenToPosition(styleData.pos)
+    if tween then
+        tween.Completed:Wait()
+        task.wait(0.5)
+        StopTweenAndHeartbeat()
+        pcall(remoteCommand)
+    end
+end
+
+local function BuyLegendarySword()
+    if not CF then return end
+    for _, sword in ipairs({"Shisui", "Saddi", "Wando"}) do
+        local hasSword = false
+        pcall(function()
+            if Plr.Backpack:FindFirstChild(sword) or (Plr.Character and Plr.Character:FindFirstChild(sword)) then
+                hasSword = true
+            end
+        end)
+        if not hasSword then
+            pcall(function() CF:InvokeServer("BuyItem", "Legendary Sword Dealer", sword) end)
+            task.wait(0.5)
+        end
+    end
+end
+
+-- IMPORTANTE: Aguarda as tabs serem criadas
+task.wait(1)
+
+-- Verifica se TabS existe antes de adicionar
+if TabS then
+    TabS:AddSection("Estilos de Lutas")
+    
+    TabS:AddButton({Title = "Buy Dark Step", Callback = function() BuyFightingStyle("Dark Step", function() CF:InvokeServer("BuyBlackLeg") end) end})
+    TabS:AddButton({Title = "Buy Eletric", Callback = function() BuyFightingStyle("Electro", function() CF:InvokeServer("BuyElectro") end) end})
+    TabS:AddButton({Title = "Buy Water Kung Fu", Callback = function() BuyFightingStyle("Fishman Karate", function() CF:InvokeServer("BuyFishmanKarate") end) end})
+    TabS:AddButton({Title = "Buy Dragon Breath", Callback = function() BuyFightingStyle("Dragon Breath", function() CF:InvokeServer("BlackbeardReward", "DragonClaw", "1") CF:InvokeServer("BlackbeardReward", "DragonClaw", "2") end) end})
+    TabS:AddButton({Title = "Buy Death Step", Callback = function() BuyFightingStyle("Death Step", function() CF:InvokeServer("BuyDeathStep") end) end})
+    TabS:AddButton({Title = "Buy Sharkman Karatê", Callback = function() BuyFightingStyle("Sharkman Karate", function() CF:InvokeServer("BuySharkmanKarate", true) CF:InvokeServer("BuySharkmanKarate") end) end})
+    TabS:AddButton({Title = "Buy Eletric Claw", Callback = function() BuyFightingStyle("Electric Claw", function() CF:InvokeServer("BuyElectricClaw", "Start") CF:InvokeServer("BuyElectricClaw") end) end})
+    TabS:AddButton({Title = "Buy Dragon Talon", Callback = function() BuyFightingStyle("Dragon Talon", function() CF:InvokeServer("BuyDragonTalon", true) CF:InvokeServer("BuyDragonTalon") end) end})
+    TabS:AddButton({Title = "Buy GodHuman", Callback = function() BuyFightingStyle("Godhuman", function() CF:InvokeServer("BuyGodhuman", true) CF:InvokeServer("BuyGodhuman") end) end})
+    TabS:AddButton({Title = "Buy Sanguine Art", Callback = function() BuyFightingStyle("Sanguine Art", function() CF:InvokeServer("BuySanguineArt", true) CF:InvokeServer("BuySanguineArt") end) end})
+    
+    local TG_ABLS = TabS:AddToggle("AutoBuyLegSword", {Title = "Auto Buy Legendary Sword", Default = false})
+    TG_ABLS:OnChanged(function(v) getgenv().AutoBuyLegendarySword = v end)
+end
+
+-- Verifica se TabSe existe antes de adicionar o botão de códigos
+if TabSe then
+    TabSe:AddButton({
+        Title = "Redeem All Codes",
+        Callback = function()
+            local codes = {
+                "LIGHTNINGABUSE", "1LOSTADMIN", "ADMINFIGHT", "GIFTINGHOURS", "NOMOREHACK",
+                "BANEXPLOIT", "WildDares", "BossBuild", "GetPranked", "EARNFRUITS",
+                "KITTRESET", "Bignews", "CHANDLER", "Fudd10", "fudd10v2",
+                "Sub2UncleKizaru", "FIGHT4FRUIT", "kittgaming", "TRIPLEABUSE",
+                "Sub2CaptainMaui", "Sub2Fer999", "EnyuisPro", "Magicbus", "JCWK",
+                "Starcodeheo", "Bluxxy", "SUB2GAMERROBOT_EXP1", "Sub2NoobMaster123",
+                "Sub2Daigrock", "Axiore", "TantaiGaming", "StrawHatMaine",
+                "Sub2OfficialNoobie", "TheGreatAce", "JULYUPDATERESET", "ADMINHACKED",
+                "SEATROLLING", "24NOADMIN", "ADMINTROLL", "NEWTROLL", "SECRETADMIN",
+                "staffbattle", "NOEXPLOIT", "NOOB2ADMIN", "CODESLIDE", "fruitconcepts",
+                "krazydares"
+            }
+            
+            local Redeem = Remotes and Remotes:FindFirstChild("Redeem")
+            if not Redeem then 
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "Volt Hub V3",
+                    Text = "Sistema de códigos indisponível!",
+                    Duration = 5
+                })
+                return 
+            end
+            
+            for i, code in ipairs(codes) do
+                task.wait(0.1)
+                pcall(function()
+                    Redeem:InvokeServer(code)
+                end)
+            end
+            
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "Volt Hub V3",
+                Text = "Todos os códigos foram resgatados!",
+                Duration = 5
+            })
+        end
+    })
+end
+
+task.spawn(function()
+    while task.wait(5) do
+        if getgenv().AutoBuyLegendarySword then pcall(BuyLegendarySword) end
+    end
+end)
+
+-- Boss Farm System
+local tableBoss = {}
+if World1 then
+    tableBoss = {"The Gorilla King", "Bobby", "Yeti", "Mob Leader", "Vice Admiral", "Warden", "Chief Warden", "Swan", "Magma Admiral", "Fishman Lord", "Wysper", "Thunder God", "Cyborg", "Saber Expert"}
+elseif World2 then
+    tableBoss = {"Diamond", "Jeremy", "Fajita", "Don Swan", "Smoke Admiral", "Cursed Captain", "Darkbeard", "Order", "Awakened Ice Admiral", "Tide Keeper"}
+elseif World3 then
+    tableBoss = {"Stone", "Island Empress", "Kilo Admiral", "Captain Elephant", "Beautiful Pirate", "rip_indra True Form", "Longma", "Soul Reaper", "Cake Queen", "Cake Prince", "Dough King"}
+end
+
+-- Verifica se TabEF existe
+if TabEF then
+    TabEF:AddSection("Boss Farm")
+    
+    local Dropdown = TabEF:AddDropdown("Dropdown", {Title = "Select Boss", Values = tableBoss, Multi = false})
+    Dropdown:OnChanged(function(Value) getgenv().SelectBoss = Value end)
+    
+    local Toggle = TabEF:AddToggle("Toggle", {Title = "Auto Kill Boss", Default = getgenv().AutoFarmBoss})
+    Toggle:OnChanged(function(Value)
+        getgenv().AutoFarmBoss = Value
+        if not Value then
+            StopTweenAndHeartbeat()
+            local char = Plr.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+                char.HumanoidRootPart.Anchored = false
+                char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new()
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+                task.wait(0.1)
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+            end
+        end
+    end)
+    
+    local Toggle2 = TabEF:AddToggle("Toggle2", {Title = "Auto Kill All Boss", Default = false})
+    Toggle2:OnChanged(function(Value)
+        getgenv().AutoFarmAllBoss = Value
+        if not Value then
+            StopTweenAndHeartbeat()
+            local char = Plr.Character
+            if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+                char.HumanoidRootPart.Anchored = false
+                char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new()
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+                task.wait(0.1)
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+            end
+        end
+    end)
+end
+
+-- Loop Auto Kill Boss
+spawn(function()
+    while task.wait(0.2) do
+        if getgenv().AutoFarmBoss and getgenv().SelectBoss then
+            pcall(function()
+                local char, hrp, hum = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart"), Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+                if not char or not hrp or not hum then return end
+                
+                local boss = WS.Enemies:FindFirstChild(getgenv().SelectBoss)
+                if boss then
+                    for _, v in pairs(WS.Enemies:GetChildren()) do
+                        if v.Name == getgenv().SelectBoss and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+                            repeat
+                                task.wait()
+                                SetNoClip(char, true)
+                                EquipWeapon()
+                                v.HumanoidRootPart.CanCollide = false
+                                v.Humanoid.WalkSpeed = 0
+                                v.HumanoidRootPart.Size = Vector3.new(80, 80, 80)
+                                hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+                                hrp.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
+                                hrp.AssemblyLinearVelocity = Vector3.zero
+                            until not getgenv().AutoFarmBoss or not v.Parent or v.Humanoid.Health <= 0
+                            StopTweenAndHeartbeat()
+                        end
+                    end
+                else
+                    local replicatedBoss = RS:FindFirstChild(getgenv().SelectBoss)
+                    if replicatedBoss and replicatedBoss:FindFirstChild("HumanoidRootPart") then
+                        local tween = TweenToPosition(replicatedBoss.HumanoidRootPart.CFrame * CFrame.new(5, 10, 7))
+                        if tween then tween.Completed:Wait() end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- Loop Auto Kill All Boss
+spawn(function()
+    while task.wait(0.2) do
+        if getgenv().AutoFarmAllBoss then
+            pcall(function()
+                for i, boss in pairs(tableBoss) do
+                    if WS.Enemies:FindFirstChild(boss) then
+                        for i, v in pairs(WS.Enemies:GetChildren()) do
+                            if v.Name == boss and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
+                                local char, hrp, hum = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart"), Plr.Character and Plr.Character:FindFirstChild("Humanoid")
+                                if not char or not hrp or not hum then return end
+                                repeat
+                                    task.wait()
+                                    SetNoClip(char, true)
+                                    EquipWeapon()
+                                    v.HumanoidRootPart.CanCollide = false
+                                    v.Humanoid.WalkSpeed = 0
+                                    v.HumanoidRootPart.Size = Vector3.new(80, 80, 80)
+                                    hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+                                    hrp.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 25, 0)
+                                    hrp.AssemblyLinearVelocity = Vector3.zero
+                                until not getgenv().AutoFarmAllBoss or not v.Parent or v.Humanoid.Health <= 0
+                                StopTweenAndHeartbeat()
+                            end
+                        end
+                    else
+                        if RS:FindFirstChild(boss) then
+                            local replicatedBoss = RS:FindFirstChild(boss)
+                            if replicatedBoss and replicatedBoss:FindFirstChild("HumanoidRootPart") then
+                                local tween = TweenToPosition(replicatedBoss.HumanoidRootPart.CFrame * CFrame.new(5, 10, 2))
+                                if tween then tween.Completed:Wait() end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- Sistema de Ataque
+local RA, RH
+task.spawn(function()
+    task.wait(2)
+    pcall(function()
+        local M = RS:WaitForChild("Modules", 5)
+        if M then
+            local N = M:FindFirstChild("Net")
+            if N then
+                RA = N:FindFirstChild("RE/RegisterAttack")
+                RH = N:FindFirstChild("RE/RegisterHit")
+            end
+        end
+    end)
+end)
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if (getgenv().AutoFarmBoss or getgenv().AutoFarmAllBoss) and RA and RH then
+            pcall(function()
+                local targetBosses = {}
+                if getgenv().AutoFarmBoss and getgenv().SelectBoss then
+                    table.insert(targetBosses, getgenv().SelectBoss)
+                elseif getgenv().AutoFarmAllBoss then
+                    targetBosses = tableBoss
+                end
+                for _, bossName in pairs(targetBosses) do
+                    for _, v in pairs(WS.Enemies:GetChildren()) do
+                        if v.Name == bossName and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Head") and v.Humanoid.Health > 0 then
+                            local targets = {{v, v.Head}}
+                            RA:FireServer(0.1)
+                            RH:FireServer(v.Head, targets)
+                            break
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+-- ============================================
+-- MÓDULO SIMPLIFICADO: Refund & Bone Surprise
+-- ============================================
+
+-- Criar Tab Quest & Itens
+local TabQI = Win:AddTab({Title="Tab Quest & Itens",Icon="package"})
+TabQI:AddSection("Items & Random")
+
+-- Auto Bone Surprise
+local AutoRandomBones = false
+
+local ToggleRandomBones = TabQI:AddToggle("RandomBones", {
+    Title = "Auto Bone Surprise",
+    Default = false
+})
+
+ToggleRandomBones:OnChanged(function(v)
+    AutoRandomBones = v
+end)
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if AutoRandomBones and World3 then
+            pcall(function()
+                RS.Remotes.CommF_:InvokeServer("Bones", "Buy", 1, 1)
+            end)
+        end
+    end
+end)
+
+-- Adicionar Others na Tab Shop
+TabS:AddSection("Others")
+
+TabS:AddButton({
+    Title = "Buy Refund Status",
+    Callback = function()
+        if World1 then return end
+        pcall(function() CF:InvokeServer("BlackbeardReward", "Refund", "1") end)
+        task.wait(0.1)
+        pcall(function() CF:InvokeServer("BlackbeardReward", "Refund", "2") end)
+        task.wait(0.1)
+        pcall(function() CF:InvokeServer("Refund") end)
+        task.wait(0.1)
+        pcall(function() CF:InvokeServer("RefundStats") end)
+    end
+})
+
+-- ============================================
+-- REMOVE FOG (Tab Settings Farming)
+-- ============================================
+getgenv().RemoveFog = false
+
+local function ApplyRemoveFog()
+    if getgenv().RemoveFog then
+        LT.FogEnd = 9e9
+        LT.FogStart = 0
+        if LT:FindFirstChildOfClass("Atmosphere") then
+            LT:FindFirstChildOfClass("Atmosphere"):Destroy()
+        end
+    else
+        LT.FogEnd = 100000
+        LT.FogStart = 0
+    end
+end
+
+TabSF:AddToggle("RemoveFog", {
+    Title = "Remove Fog",
+    Default = false
+}):OnChanged(function(v)
+    getgenv().RemoveFog = v
+    ApplyRemoveFog()
+end)
+
+-- ============================================
+-- SEA EVENTS TAB
+-- ============================================
+local TabSeaEvents = Win:AddTab({Title="Sea Events", Icon="waves"})
+
+-- Variáveis de controle
+getgenv().SelectedSeaFarms = {
+    ["Sea Beast"] = false,
+    ["Terror Shark"] = false,
+    ["Ship"] = false,
+    ["Piranha"] = false
+}
+
+getgenv().SelectedSpamSkills = {
+    ["Melee"] = false,
+    ["Sword"] = false,
+    ["Gun"] = false,
+    ["Blox Fruit"] = false
+}
+
+getgenv().AutoSeaEvent = false
+
+-- Dropdown Select Farm Sea
+local DropdownSeaFarm = TabSeaEvents:AddDropdown("SelectFarmSea", {
+    Title = "Select Farm Sea",
+    Values = {"Sea Beast", "Terror Shark", "Ship", "Piranha"},
+    Multi = true,
+    Default = {}
+})
+
+DropdownSeaFarm:OnChanged(function(selected)
+    -- Resetar todos
+    for k, _ in pairs(getgenv().SelectedSeaFarms) do
+        getgenv().SelectedSeaFarms[k] = false
+    end
+    
+    -- Ativar os selecionados
+    for _, v in pairs(selected) do
+        if getgenv().SelectedSeaFarms[v] ~= nil then
+            getgenv().SelectedSeaFarms[v] = true
+        end
+    end
+end)
+
+-- Dropdown Select Spam Skill
+local DropdownSpamSkill = TabSeaEvents:AddDropdown("SelectSpamSkill", {
+    Title = "Select Spam Skill",
+    Values = {"Melee", "Sword", "Gun", "Blox Fruit"},
+    Multi = true,
+    Default = {}
+})
+
+DropdownSpamSkill:OnChanged(function(selected)
+    -- Resetar todos
+    for k, _ in pairs(getgenv().SelectedSpamSkills) do
+        getgenv().SelectedSpamSkills[k] = false
+    end
+    
+    -- Ativar os selecionados
+    for _, v in pairs(selected) do
+        if getgenv().SelectedSpamSkills[v] ~= nil then
+            getgenv().SelectedSpamSkills[v] = true
+        end
+    end
+end)
+
+-- Toggle Auto Sea Event
+local ToggleAutoSeaEvent = TabSeaEvents:AddToggle("AutoSeaEvent", {
+    Title = "Auto Sea Event",
+    Default = false
+})
+
+ToggleAutoSeaEvent:OnChanged(function(v)
+    getgenv().AutoSeaEvent = v
+end)
+
+-- ============================================
+-- REGISTER ATTACK E HIT (SISTEMA DO VOLT)
+-- ============================================
+local RA, RH
+
+task.spawn(function()
+    task.wait(2)
+    local M = RS:WaitForChild("Modules", 5)
+    if M then
+        local N = M:FindFirstChild("Net")
+        if N then
+            RA = N:FindFirstChild("RE/RegisterAttack")
+            RH = N:FindFirstChild("RE/RegisterHit")
+        end
+    end
+end)
+
+-- Sistema de ataque automático
+task.spawn(function()
+    while task.wait(0.1) do
+        if IFA() and RA and RH then
+            pcall(function()
+                local tgts = {}
+                
+                for _, m in pairs(WS.Enemies:GetChildren()) do
+                    if m:FindFirstChild("Head") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 then
+                        local valid = false
+                        
+                        if getgenv().AF then
+                            local q = GQ()
+                            if q and m.Name == (q.M or q.Mon) then
+                                valid = true
+                            end
+                        elseif getgenv().AK then
+                            for _, n in ipairs(KM) do
+                                if m.Name == n then
+                                    valid = true
+                                    break
+                                end
+                            end
+                        elseif getgenv().AB then
+                            for _, n in ipairs(BonM) do
+                                if m.Name == n then
+                                    valid = true
+                                    break
+                                end
+                            end
+                        end
+                        
+                        if valid then
+                            table.insert(tgts, {m, m.Head})
+                        end
+                    end
+                end
+                
+                if #tgts > 0 then
+                    RA:FireServer(0.1)
+                    RH:FireServer(tgts[1][2], tgts)
+                end
+            end)
+        end
+    end
+end)
+
+-- Sistema de auto click
+task.spawn(function()
+    while task.wait(0.1) do
+        if getgenv().AC and RA and RH then
+            pcall(function()
+                local c = LP.Character
+                local hrp = c and c:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                
+                local tgts = {}
+                
+                for _, m in pairs(WS.Enemies:GetChildren()) do
+                    if m:FindFirstChild("Head") and m:FindFirstChild("Humanoid") and m.Humanoid.Health > 0 and m:FindFirstChild("HumanoidRootPart") then
+                        local dist = (hrp.Position - m.HumanoidRootPart.Position).Magnitude
+                        if dist <= 50 then
+                            table.insert(tgts, {m, m.Head})
+                        end
+                    end
+                end
+                
+                if #tgts > 0 then
+                    RA:FireServer(0.1)
+                    RH:FireServer(tgts[1][2], tgts)
+                end
+            end)
+        end
+    end
+end)
+
+-- ============================================
+-- LOOP PRINCIPAL (SEM INTERFERÊNCIA NA GRAVIDADE)
+-- ============================================
+task.spawn(function()
+    while task.wait(0.15) do
+        pcall(function()
+            -- Apenas executa se algum farm estiver ativo
+            if not IFA() then 
+                return 
+            end
+            
+            local c = LP.Character
+            if not c then return end
+            
+            local hrp, hum = c:FindFirstChild("HumanoidRootPart"), c:FindFirstChild("Humanoid")
+            
+            if not hrp or not hum or hum.Health <= 0 then
+                if hum and hum.Health <= 0 then
+                    SAT()
+                    repeat task.wait() until LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character:FindFirstChild("Humanoid") and LP.Character.Humanoid.Health > 0
+                    task.wait(1)
+                end
+                return
+            end
+            
+            if getgenv().AF then
+                local q = GQ()
+                if not q then return end
+                
+                local qN, qL, mn, msCF = q.N or q.NameQuest, q.L or q.LevelQuest, q.M or q.Mon, q.SC or q.CFrameMon
+                local qCF = q.C or q.CFrameQuest or CFrame.new(msCF.Position.X, msCF.Position.Y > 0 and msCF.Position.Y or 50, msCF.Position.Z)
+                
+                if getgenv().CurrentQuestName ~= qN or getgenv().CurrentQuestLevel ~= qL then
+                    CQ()
+                    getgenv().CurrentQuestName, getgenv().CurrentQuestLevel = nil, nil
+                    SAT()
+                    task.wait(0.5)
+                end
+                
+                if not HQ() then
+                    if not TryGetQuest(qN, qL, qCF) then return end
+                end
+                
+                local fMob = FMS(mn)
+                if fMob then
+                    PM(c, hrp, hum, fMob, mn)
+                else
+                    SAT()
+                    TTG(hrp, CFrame.new(msCF.Position.X, msCF.Position.Y > 0 and msCF.Position.Y or 50, msCF.Position.Z), 250)
+                    task.wait(0.5)
+                end
+                
+            elseif getgenv().AK then
+                HMR(KM, "KataIndex", KS)
+                
+            elseif getgenv().AB then
+                HMR(BonM, "BoneIndex", BS)
+            end
+        end)
+    end
+end)
