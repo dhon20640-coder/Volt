@@ -1855,7 +1855,7 @@ task.spawn(function()
                     task.wait(0.5)
                 end
                 
-            elseif getgenv().AK then
+             getgenv().AK then
                 HMR(KM, "KataIndex", KS)
                 
             elseif getgenv().AB then
@@ -1865,59 +1865,74 @@ task.spawn(function()
     end
 end)
 -- ============================================
--- MÓDULO: COMPRAS - 10 TOGGLES (CORRIGIDO)
+-- MÓDULO: COMPRAS - 10 TOGGLES (VERSÃO FINAL)
 -- ============================================
 
--- CORREÇÃO 1: Usar task.spawn para não bloquear o loadstring
+-- Aguardar carregamento da UI antes de executar
+repeat task.wait() until game:IsLoaded()
+task.wait(1) -- Garantir que tudo carregou
+
+-- Executar em thread separada
 task.spawn(function()
     
--- CORREÇÃO 2: pcall com tratamento de erro adequado
 local success, errorMsg = pcall(function()
 
--- CORREÇÃO 3: Verificar serviços essenciais antes de usar
-local RS = game:GetService("ReplicatedStorage")
-if not RS then 
-    warn("[MÓDULO COMPRAS] ❌ ReplicatedStorage não encontrado!")
-    return 
-end
+-- ===== VERIFICAÇÕES CRÍTICAS =====
+print("[MÓDULO COMPRAS] 🔍 Iniciando verificações...")
 
+-- Verificar serviços
+local RS = game:GetService("ReplicatedStorage")
 local TS = game:GetService("TweenService")
 local RSvc = game:GetService("RunService")
-local Plr = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local Plr = Players.LocalPlayer
+local WS = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+
 if not Plr then 
     warn("[MÓDULO COMPRAS] ❌ LocalPlayer não encontrado!")
     return 
 end
 
-local WS = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
-
--- CORREÇÃO 4: Verificar Remotes com timeout
-local Remotes = RS:WaitForChild("Remotes", 10)
+-- Verificar Remotes
+local Remotes = RS:WaitForChild("Remotes", 15)
 if not Remotes then
-    warn("[MÓDULO COMPRAS] ❌ Remotes não encontrado!")
+    warn("[MÓDULO COMPRAS] ❌ Remotes não encontrado após 15s!")
     return
 end
 
-local CF = Remotes:WaitForChild("CommF_", 10)
+local CF = Remotes:WaitForChild("CommF_", 15)
 if not CF then
-    warn("[MÓDULO COMPRAS] ❌ CommF_ não encontrado!")
+    warn("[MÓDULO COMPRAS] ❌ CommF_ não encontrado após 15s!")
     return
 end
 
--- CORREÇÃO 5: Verificar se TabS e TabSe existem (variáveis globais da UI)
+-- AGUARDAR TABS SEREM CRIADAS (CRÍTICO)
+local maxWait = 30 -- 30 segundos de espera máxima
+local waited = 0
+while (not _G.TabS or not _G.TabSe) and waited < maxWait do
+    task.wait(0.5)
+    waited = waited + 0.5
+end
+
 if not _G.TabS then
-    warn("[MÓDULO COMPRAS] ❌ TabS (Tab Shop) não existe! Verifique se a UI foi carregada primeiro.")
+    warn("[MÓDULO COMPRAS] ❌ TabS não existe após " .. maxWait .. "s! A UI Shop não foi criada.")
+    warn("[MÓDULO COMPRAS] 💡 SOLUÇÃO: Verifique se o script da UI está sendo executado ANTES deste módulo.")
     return
 end
 
 if not _G.TabSe then
-    warn("[MÓDULO COMPRAS] ❌ TabSe (Tab Settings) não existe! Verifique se a UI foi carregada primeiro.")
+    warn("[MÓDULO COMPRAS] ❌ TabSe não existe após " .. maxWait .. "s! A UI Settings não foi criada.")
+    warn("[MÓDULO COMPRAS] 💡 SOLUÇÃO: Verifique se o script da UI está sendo executado ANTES deste módulo.")
     return
 end
 
 local TabS = _G.TabS
 local TabSe = _G.TabSe
+
+print("[MÓDULO COMPRAS] ✅ Verificações concluídas! TabS e TabSe encontradas.")
+
+-- ===== CONFIGURAÇÕES =====
 
 -- Verificação de Sea
 local World1 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715
@@ -1928,29 +1943,30 @@ local function GetSea()
     return World1 and 1 or World2 and 2 or World3 and 3 or 1
 end
 
--- Configurações globais dos toggles
-getgenv().AutoBuyDarkStep = getgenv().AutoBuyDarkStep or false
-getgenv().AutoBuyElectric = getgenv().AutoBuyElectric or false
-getgenv().AutoBuyFishmanKarate = getgenv().AutoBuyFishmanKarate or false
-getgenv().AutoBuyDragonBreath = getgenv().AutoBuyDragonBreath or false
-getgenv().AutoBuyDeathStep = getgenv().AutoBuyDeathStep or false
-getgenv().AutoBuyElectricClaw = getgenv().AutoBuyElectricClaw or false
-getgenv().AutoBuySharkmanKarate = getgenv().AutoBuySharkmanKarate or false
-getgenv().AutoBuyDragonTalon = getgenv().AutoBuyDragonTalon or false
-getgenv().AutoBuyGodhuman = getgenv().AutoBuyGodhuman or false
-getgenv().AutoBuySanguineArt = getgenv().AutoBuySanguineArt or false
-getgenv().FPSBoost = getgenv().FPSBoost or false
+-- Inicializar configurações globais
+if not getgenv().AutoBuyDarkStep then getgenv().AutoBuyDarkStep = false end
+if not getgenv().AutoBuyElectric then getgenv().AutoBuyElectric = false end
+if not getgenv().AutoBuyFishmanKarate then getgenv().AutoBuyFishmanKarate = false end
+if not getgenv().AutoBuyDragonBreath then getgenv().AutoBuyDragonBreath = false end
+if not getgenv().AutoBuyDeathStep then getgenv().AutoBuyDeathStep = false end
+if not getgenv().AutoBuyElectricClaw then getgenv().AutoBuyElectricClaw = false end
+if not getgenv().AutoBuySharkmanKarate then getgenv().AutoBuySharkmanKarate = false end
+if not getgenv().AutoBuyDragonTalon then getgenv().AutoBuyDragonTalon = false end
+if not getgenv().AutoBuyGodhuman then getgenv().AutoBuyGodhuman = false end
+if not getgenv().AutoBuySanguineArt then getgenv().AutoBuySanguineArt = false end
+if not getgenv().FPSBoost then getgenv().FPSBoost = false end
 
--- Sistema de Tween Anti-Tremor
+-- ===== SISTEMA DE TWEEN =====
+
 local activeTween, heartbeatConn = nil, nil
 
 local function StopTweenAndHeartbeat()
     if activeTween then 
-        activeTween:Cancel() 
+        pcall(function() activeTween:Cancel() end)
         activeTween = nil 
     end
     if heartbeatConn then 
-        heartbeatConn:Disconnect() 
+        pcall(function() heartbeatConn:Disconnect() end)
         heartbeatConn = nil 
     end
 end
@@ -1965,7 +1981,9 @@ local function TweenToPosition(targetCFrame)
     StopTweenAndHeartbeat()
     
     local distance = (hrp.Position - targetCFrame.Position).Magnitude
-    activeTween = TS:Create(hrp, TweenInfo.new(distance / 250, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+    local tweenInfo = TweenInfo.new(distance / 250, Enum.EasingStyle.Linear)
+    
+    activeTween = TS:Create(hrp, tweenInfo, {CFrame = targetCFrame})
     activeTween:Play()
     
     heartbeatConn = RSvc.Heartbeat:Connect(function()
@@ -1979,10 +1997,11 @@ local function TweenToPosition(targetCFrame)
     return activeTween
 end
 
--- Posições dos NPCs de Fighting Styles
+-- ===== POSIÇÕES DOS NPCS =====
+
 local FightingStyleNPCs = {
-    ["Dark Step"] = CFrame.new(-983.6179809570312, 12.449996948242188, 3990.462890625),
-    ["Electro"] = CFrame.new(-5382.7822265625, 12.550003051757812, -2148.818115234375),
+    ["Dark Step"] = CFrame.new(-983.618, 12.45, 3990.463),
+    ["Electro"] = CFrame.new(-5382.782, 12.55, -2148.818),
     ["Fishman Karate"] = CFrame.new(61586.722, 18.9, 989.584),
     ["Dragon Breath"] = CFrame.new(699.572, 186.99, 656.837),
     ["Death Step"] = CFrame.new(6358.787, 296.661, -6766.079),
@@ -1993,7 +2012,6 @@ local FightingStyleNPCs = {
     ["Sanguine Art"] = CFrame.new(-16515.053, 23.17, -193.006)
 }
 
--- Requisitos de Sea para cada estilo
 local StyleRequirements = {
     ["Dark Step"] = 1,
     ["Electro"] = 1,
@@ -2030,52 +2048,44 @@ local function BuyFightingStyle(styleName, remoteCommand)
     return false
 end
 
--- Função FPS Boost
+-- ===== FPS BOOST =====
+
 local function ApplyFPSBoost()
     task.spawn(function()
         pcall(function()
-            -- Configurar Lighting
             Lighting.GlobalShadows = false
             Lighting.Brightness = 0
             Lighting.OutdoorAmbient = Color3.new(0, 0, 0)
             Lighting.FogEnd = 9e9
             
-            -- Configurar qualidade de renderização
             settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
             
-            -- Desabilitar notificações
-            if Plr.PlayerGui:FindFirstChild("Notifications") then
-                Plr.PlayerGui.Notifications.Enabled = false
+            local playerGui = Plr:WaitForChild("PlayerGui", 5)
+            if playerGui then
+                local notifs = playerGui:FindFirstChild("Notifications")
+                if notifs then
+                    notifs.Enabled = false
+                end
             end
             
-            -- Processar Workspace
             for _, obj in pairs(WS:GetDescendants()) do
                 task.spawn(function()
                     pcall(function()
-                        -- Remover texturas
-                        if obj:IsA("Decal") then
-                            obj.Transparency = 1
-                        elseif obj:IsA("Texture") then
+                        if obj:IsA("Decal") or obj:IsA("Texture") then
                             obj.Transparency = 1
                         elseif obj:IsA("MeshPart") then
                             obj.TextureID = ""
                         elseif obj:IsA("SpecialMesh") then
                             obj.TextureId = ""
-                        
-                        -- Remover partículas e efeitos
                         elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
                             obj.Enabled = false
                         elseif obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
                             obj.Enabled = false
-                        
-                        -- Remover sombras e luzes
                         elseif obj:IsA("BasePart") then
                             obj.CastShadow = false
                             obj.Material = Enum.Material.SmoothPlastic
                         elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
                             obj.Enabled = false
-                        
-                        -- Remover blooms e blur
                         elseif obj:IsA("BloomEffect") or obj:IsA("BlurEffect") or obj:IsA("DepthOfFieldEffect") then
                             obj.Enabled = false
                         elseif obj:IsA("SunRaysEffect") or obj:IsA("ColorCorrectionEffect") then
@@ -2085,7 +2095,7 @@ local function ApplyFPSBoost()
                 end)
             end
             
-            print("[FPS Boost] ✅ Ativado com sucesso!")
+            print("[FPS Boost] ✅ Ativado!")
         end)
     end)
 end
@@ -2095,28 +2105,39 @@ local function DisableFPSBoost()
         Lighting.GlobalShadows = true
         Lighting.Brightness = 1
         Lighting.FogEnd = 100000
-        
         settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
         
-        if Plr.PlayerGui:FindFirstChild("Notifications") then
-            Plr.PlayerGui.Notifications.Enabled = true
+        local playerGui = Plr:WaitForChild("PlayerGui", 5)
+        if playerGui then
+            local notifs = playerGui:FindFirstChild("Notifications")
+            if notifs then
+                notifs.Enabled = true
+            end
         end
         
-        print("[FPS Boost] ⚠️ Desativado! Dê rejoin para restaurar texturas.")
+        print("[FPS Boost] ⚠️ Desativado!")
     end)
 end
 
--- FPS Boost na aba Settings
-TabSe:AddSection("Performance")
+-- ===== CRIAR UI - SETTINGS TAB =====
+
+print("[MÓDULO COMPRAS] 🎨 Criando FPS Boost na TabSe...")
+
+local sectionCreated = pcall(function()
+    TabSe:AddSection("Performance")
+end)
+
+if not sectionCreated then
+    warn("[MÓDULO COMPRAS] ⚠️ Não foi possível criar seção Performance")
+end
 
 local TG_FPSBoost = TabSe:AddToggle("FPSBoost", {
     Title = "FPS Boost", 
-    Default = false
+    Default = getgenv().FPSBoost or false
 })
 
 TG_FPSBoost:OnChanged(function(v)
     getgenv().FPSBoost = v
-    
     if v then
         ApplyFPSBoost()
     else
@@ -2124,9 +2145,16 @@ TG_FPSBoost:OnChanged(function(v)
     end
 end)
 
+print("[MÓDULO COMPRAS] ✅ FPS Boost criado!")
+
+-- ===== CRIAR UI - SHOP TAB =====
+
+print("[MÓDULO COMPRAS] 🎨 Criando botões e toggles na TabS...")
+
 -- Botão Redeem All Codes
 TabS:AddButton({
     Title = "Redeem All Codes",
+    Description = "Resgata todos os códigos disponíveis",
     Callback = function()
         task.spawn(function()
             pcall(function()
@@ -2138,14 +2166,14 @@ TabS:AddButton({
                     "SUB2GAMERROBOT_EXP1","SUB2GAMERROBOT_EXP2","SUB2GAMERROBOT_RESET1"
                 }
                 
-                for i = 1, #codes do
+                print("[CÓDIGOS] 🎁 Resgatando códigos...")
+                for i, code in ipairs(codes) do
                     pcall(function()
-                        CF:InvokeServer("PromoCodeCheck", codes[i])
+                        CF:InvokeServer("PromoCodeCheck", code)
                     end)
-                    task.wait(0.5)
+                    task.wait(0.3)
                 end
-                
-                print("[CÓDIGOS] ✅ Todos os códigos foram resgatados!")
+                print("[CÓDIGOS] ✅ Concluído!")
             end)
         end)
     end
@@ -2155,95 +2183,118 @@ TabS:AddSection("Auto Buy Fighting Styles")
 
 -- Toggle 1: Dark Step
 local TG_DarkStep = TabS:AddToggle("AutoBuyDarkStep", {
-    Title = "Auto Buy Dark Step", 
-    Default = false
+    Title = "Auto Buy Dark Step",
+    Description = "Compra Dark Step automaticamente (Sea 1)",
+    Default = getgenv().AutoBuyDarkStep or false
 })
 TG_DarkStep:OnChanged(function(v) 
     getgenv().AutoBuyDarkStep = v 
+    print("[Dark Step] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 2: Electric
 local TG_Electric = TabS:AddToggle("AutoBuyElectric", {
-    Title = "Auto Buy Electric", 
-    Default = false
+    Title = "Auto Buy Electric",
+    Description = "Compra Electric automaticamente (Sea 1)",
+    Default = getgenv().AutoBuyElectric or false
 })
 TG_Electric:OnChanged(function(v) 
     getgenv().AutoBuyElectric = v 
+    print("[Electric] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 3: Fishman Karate
 local TG_FishmanKarate = TabS:AddToggle("AutoBuyFishmanKarate", {
-    Title = "Auto Buy Fishman Karate", 
-    Default = false
+    Title = "Auto Buy Fishman Karate",
+    Description = "Compra Fishman Karate automaticamente (Sea 2)",
+    Default = getgenv().AutoBuyFishmanKarate or false
 })
 TG_FishmanKarate:OnChanged(function(v) 
     getgenv().AutoBuyFishmanKarate = v 
+    print("[Fishman Karate] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 4: Dragon Breath
 local TG_DragonBreath = TabS:AddToggle("AutoBuyDragonBreath", {
-    Title = "Auto Buy Dragon Breath", 
-    Default = false
+    Title = "Auto Buy Dragon Breath",
+    Description = "Compra Dragon Breath automaticamente (Sea 2)",
+    Default = getgenv().AutoBuyDragonBreath or false
 })
 TG_DragonBreath:OnChanged(function(v) 
     getgenv().AutoBuyDragonBreath = v 
+    print("[Dragon Breath] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 5: Death Step
 local TG_DeathStep = TabS:AddToggle("AutoBuyDeathStep", {
-    Title = "Auto Buy Death Step", 
-    Default = false
+    Title = "Auto Buy Death Step",
+    Description = "Compra Death Step automaticamente (Sea 2)",
+    Default = getgenv().AutoBuyDeathStep or false
 })
 TG_DeathStep:OnChanged(function(v) 
     getgenv().AutoBuyDeathStep = v 
+    print("[Death Step] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 6: Electric Claw
 local TG_ElectricClaw = TabS:AddToggle("AutoBuyElectricClaw", {
-    Title = "Auto Buy Electric Claw", 
-    Default = false
+    Title = "Auto Buy Electric Claw",
+    Description = "Compra Electric Claw automaticamente (Sea 2)",
+    Default = getgenv().AutoBuyElectricClaw or false
 })
 TG_ElectricClaw:OnChanged(function(v) 
     getgenv().AutoBuyElectricClaw = v 
+    print("[Electric Claw] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 7: Sharkman Karate
 local TG_SharkmanKarate = TabS:AddToggle("AutoBuySharkmanKarate", {
-    Title = "Auto Buy Sharkman Karate", 
-    Default = false
+    Title = "Auto Buy Sharkman Karate",
+    Description = "Compra Sharkman Karate automaticamente (Sea 2)",
+    Default = getgenv().AutoBuySharkmanKarate or false
 })
 TG_SharkmanKarate:OnChanged(function(v) 
     getgenv().AutoBuySharkmanKarate = v 
+    print("[Sharkman Karate] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 8: Dragon Talon
 local TG_DragonTalon = TabS:AddToggle("AutoBuyDragonTalon", {
-    Title = "Auto Buy Dragon Talon", 
-    Default = false
+    Title = "Auto Buy Dragon Talon",
+    Description = "Compra Dragon Talon automaticamente (Sea 3)",
+    Default = getgenv().AutoBuyDragonTalon or false
 })
 TG_DragonTalon:OnChanged(function(v) 
     getgenv().AutoBuyDragonTalon = v 
+    print("[Dragon Talon] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 9: Godhuman
 local TG_Godhuman = TabS:AddToggle("AutoBuyGodhuman", {
-    Title = "Auto Buy Godhuman", 
-    Default = false
+    Title = "Auto Buy Godhuman",
+    Description = "Compra Godhuman automaticamente (Sea 3)",
+    Default = getgenv().AutoBuyGodhuman or false
 })
 TG_Godhuman:OnChanged(function(v) 
     getgenv().AutoBuyGodhuman = v 
+    print("[Godhuman] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
 -- Toggle 10: Sanguine Art
 local TG_SanguineArt = TabS:AddToggle("AutoBuySanguineArt", {
-    Title = "Auto Buy Sanguine Art", 
-    Default = false
+    Title = "Auto Buy Sanguine Art",
+    Description = "Compra Sanguine Art automaticamente (Sea 3)",
+    Default = getgenv().AutoBuySanguineArt or false
 })
 TG_SanguineArt:OnChanged(function(v) 
     getgenv().AutoBuySanguineArt = v 
+    print("[Sanguine Art] " .. (v and "✅ Ativado" or "❌ Desativado"))
 end)
 
--- Sistema de Auto Buy em Loop
+print("[MÓDULO COMPRAS] ✅ Todos os toggles criados!")
+
+-- ===== SISTEMA DE AUTO BUY =====
+
 task.spawn(function()
     while task.wait(5) do
         pcall(function()
@@ -2316,18 +2367,18 @@ task.spawn(function()
     end
 end)
 
-print("[MÓDULO COMPRAS] ✅ Carregado com sucesso!")
+print("[MÓDULO COMPRAS] ✅ Sistema de Auto Buy iniciado!")
+print("[MÓDULO COMPRAS] ✅ MÓDULO TOTALMENTE CARREGADO E FUNCIONAL!")
 
--- CORREÇÃO 6: Fim do pcall com tratamento de erro
-end) -- Fim do pcall principal
+end) -- Fim do pcall
 
--- CORREÇÃO 7: Mostrar erro se houver
 if not success then
-    warn("[MÓDULO COMPRAS] ❌ ERRO AO CARREGAR:")
+    warn("═══════════════════════════════════════")
+    warn("[MÓDULO COMPRAS] ❌ ERRO CRÍTICO:")
     warn(errorMsg)
+    warn("═══════════════════════════════════════")
 end
 
--- CORREÇÃO 8: Fim do task.spawn
 end) -- Fim do task.spawn
 
 -- ============================================
