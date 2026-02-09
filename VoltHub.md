@@ -1868,6 +1868,8 @@ end)
 -- MÓDULO: COMPRAS - 10 TOGGLES
 -- ============================================
 
+pcall(function()
+
 local RS = game:GetService("ReplicatedStorage")
 local TS = game:GetService("TweenService")
 local RSvc = game:GetService("RunService")
@@ -1879,9 +1881,9 @@ local Remotes = RS:WaitForChild("Remotes", 5)
 local CF = Remotes:FindFirstChild("CommF_")
 
 -- Verificação de Sea
-World1, World2, World3 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715, game.PlaceId == 4442272183 or game.PlaceId == 79091703265657, game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
+local World1, World2, World3 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715, game.PlaceId == 4442272183 or game.PlaceId == 79091703265657, game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
 
-function GetSea()
+local function GetSea()
     return World1 and 1 or World2 and 2 or World3 and 3 or 1
 end
 
@@ -2290,3 +2292,7 @@ end)
 -- ============================================
 -- FIM DO MÓDULO COMPRAS
 -- ============================================
+
+end) -- Fim do pcall de proteção
+
+print("[MÓDULO COMPRAS] ✅ Carregado com sucesso!")
