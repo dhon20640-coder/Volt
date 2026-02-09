@@ -1868,8 +1868,6 @@ end)
 -- MÓDULO: COMPRAS - 10 TOGGLES
 -- ============================================
 
-do -- Início do escopo isolado do módulo
-
 local RS = game:GetService("ReplicatedStorage")
 local TS = game:GetService("TweenService")
 local RSvc = game:GetService("RunService")
@@ -2292,5 +2290,3 @@ end)
 -- ============================================
 -- FIM DO MÓDULO COMPRAS
 -- ============================================
-
-end -- Fim do escopo isolado do módulo
