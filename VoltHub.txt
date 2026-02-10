@@ -161,7 +161,7 @@ local TG_MAIN=TabF:AddToggle("MainFarm",{Title="Auto Farm",Default=false})
 TG_MAIN:OnChanged(function(v)if v then if getgenv().FarmMode=="Farm Katakuri"and(GL()<1500 or not World3)or getgenv().FarmMode=="Farm Bone"and(GL()<1500 or not World3)then TG_MAIN:SetValue(false);return end;if getgenv().FarmMode=="Farm Level"then getgenv().AF,getgenv().AK,getgenv().AB=true,false,false elseif getgenv().FarmMode=="Farm Katakuri"then getgenv().AF,getgenv().AK,getgenv().AB,getgenv().KataIndex=false,true,false,1 elseif getgenv().FarmMode=="Farm Bone"then getgenv().AF,getgenv().AK,getgenv().AB,getgenv().BoneIndex=false,false,true,1 end else getgenv().AF,getgenv().AK,getgenv().AB=false,false,false;RNP();SAT()end end)
 TabSt:AddSlider("Pts",{Title="Select Points",Default=1,Min=1,Max=100,Rounding=0}):OnChanged(function(v)getgenv().SP=v end);TabSt:AddDropdown("Stat",{Title="Selecionar Status",Values={"Melee","Defense","Sword","Gun","Blox Fruit"},Default=1}):OnChanged(function(v)getgenv().SA=({Melee="Melee",Defense="Defense",Sword="Sword",Gun="Gun",["Blox Fruit"]="Fruit"})[v]end);TabSt:AddToggle("AS",{Title="Auto Status",Default=false}):OnChanged(function(v)getgenv().AS=v end)
 TabSe:AddSection("Server HOP");TabSe:AddButton({Title="Rejoin",Callback=function()game:GetService("TeleportService"):Teleport(game.PlaceId,LP)end});TabSe:AddButton({Title="Hop Server near player",Callback=function()task.spawn(function()local HS,TS2,srvs=game:GetService("HttpService"),game:GetService("TeleportService"),{};local ok,res=pcall(function()return game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")end);if ok then local d=HS:JSONDecode(res);if d and d.data then for _,s in ipairs(d.data)do if s.playing and s.playing>=1 and s.playing<=8 and s.id~=game.JobId then table.insert(srvs,s.id)end end end end;if #srvs>0 then TS2:TeleportToPlaceInstance(game.PlaceId,srvs[math.random(1,#srvs)],LP)else TS2:Teleport(game.PlaceId,LP)end end)end})
-local SG=Instance.new("ScreenGui");SG.Name="VoltToggle";SG.ResetOnSpawn=false;SG.Parent=LP:WaitForChild("PlayerGui");local BTN=Instance.new("ImageButton");BTN.Size=UDim2.fromOffset(70,70);BTN.Position=UDim2.new(0,20,0,20);BTN.BackgroundTransparency=1;BTN.Image="rbxassetid://99825369604074";BTN.ScaleType=Enum.ScaleType.Fit;BTN.AutoButtonColor=false;BTN.ImageTransparency=0;BTN.Parent=SG;local UIC=Instance.new("UICorner");UIC.CornerRadius=UDim.new(1,0);UIC.Parent=BTN
+local SG=Instance.new("ScreenGui");SG.Name="VoltToggle";SG.ResetOnSpawn=false;SG.Parent=LP:WaitForChild("PlayerGui");local BTN=Instance.new("ImageButton");BTN.Size=UDim2.fromOffset(70,70);BTN.Position=UDim2.new(0,20,0,20);BTN.BackgroundTransparency=1;BTN.Image="rbxassetid://101674777317269";BTN.ScaleType=Enum.ScaleType.Fit;BTN.AutoButtonColor=false;BTN.ImageTransparency=0;BTN.Parent=SG;local UIC=Instance.new("UICorner");UIC.CornerRadius=UDim.new(1,0);UIC.Parent=BTN
 local dragging,dragInput,dragStart,startPos;local function update(input)local delta=input.Position-dragStart;BTN.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)end;BTN.InputBegan:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=true;dragStart=input.Position;startPos=BTN.Position;input.Changed:Connect(function()if input.UserInputState==Enum.UserInputState.End then dragging=false end end)end end);BTN.InputChanged:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then dragInput=input end end);game:GetService("UserInputService").InputChanged:Connect(function(input)if input==dragInput and dragging then update(input)end end);BTN.MouseButton1Click:Connect(function()Win.Root.Visible=not Win.Root.Visible end)
 local RA,RH;task.spawn(function()task.wait(2);local M=RS:WaitForChild("Modules",5);if M then local N=M:FindFirstChild("Net");if N then RA,RH=N:FindFirstChild("RE/RegisterAttack"),N:FindFirstChild("RE/RegisterHit")end end end)
 task.spawn(function()while task.wait(0.1)do if IFA()and RA and RH then local tgts={};for _,m in pairs(WS.Enemies:GetChildren())do if m:FindFirstChild("Head")and m:FindFirstChild("Humanoid")and m.Humanoid.Health>0 then local valid=false;if getgenv().AF then local q=GQ();if q and m.Name==(q.M or q.Mon)then valid=true end elseif getgenv().AK then for _,n in ipairs(KM)do if m.Name==n then valid=true;break end end elseif getgenv().AB then for _,n in ipairs(BonM)do if m.Name==n then valid=true;break end end end;if valid then table.insert(tgts,{m,m.Head})end end end;if #tgts>0 then RA:FireServer(0.1);RH:FireServer(tgts[1][2],tgts)end end end end)
@@ -659,7 +659,8 @@ task.spawn(function()
     end
 end)
 -- ============================================
--- MÓDULO: COMPRAS - 10 TOGGLES
+-- MÓDULO: COMPRAS - 10 TOGGLES (CORRIGIDO)
+-- Versão sem conflitos com Elite Hunter
 -- ============================================
 
 local RS = game:GetService("ReplicatedStorage")
@@ -692,39 +693,56 @@ getgenv().AutoBuyGodhuman = false
 getgenv().AutoBuySanguineArt = false
 getgenv().FPSBoost = false
 
--- Sistema de Tween Anti-Tremor
-local activeTween, heartbeatConn = nil, nil
+-- ============================================
+-- SISTEMA DE TWEEN ISOLADO (SEM CONFLITO)
+-- ============================================
 
-local function StopTweenAndHeartbeat()
-    if activeTween then 
-        activeTween:Cancel() 
-        activeTween = nil 
+local ShopTween = nil
+local ShopHeartbeat = nil
+
+local function StopShopTween()
+    if ShopTween then 
+        ShopTween:Cancel() 
+        ShopTween = nil 
     end
-    if heartbeatConn then 
-        heartbeatConn:Disconnect() 
-        heartbeatConn = nil 
+    if ShopHeartbeat then 
+        ShopHeartbeat:Disconnect() 
+        ShopHeartbeat = nil 
     end
 end
 
-local function TweenToPosition(targetCFrame)
-    local char, hrp = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+local function TweenToShop(targetCFrame)
+    local char = Plr.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
     
-    StopTweenAndHeartbeat()
+    -- Para apenas os tweens da SHOP (não interfere com Elite Hunter)
+    StopShopTween()
     
     local distance = (hrp.Position - targetCFrame.Position).Magnitude
-    activeTween = TS:Create(hrp, TweenInfo.new(distance / 250, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
-    activeTween:Play()
     
-    heartbeatConn = RSvc.Heartbeat:Connect(function()
+    ShopTween = TS:Create(hrp, 
+        TweenInfo.new(distance / 250, Enum.EasingStyle.Linear), 
+        {CFrame = targetCFrame}
+    )
+    ShopTween:Play()
+    
+    -- Anti-tremor isolado APENAS para compras
+    ShopHeartbeat = RSvc.Heartbeat:Connect(function()
         if not hrp or not hrp.Parent then 
-            StopTweenAndHeartbeat() 
+            StopShopTween() 
             return 
         end
-        hrp.Velocity = Vector3.new(0, 0, 0)
+        -- Só aplica velocidade zero se NÃO estiver no Elite Hunter
+        if not getgenv().AutoElite then
+            hrp.Velocity = Vector3.new(0, 0, 0)
+        end
     end)
     
-    return activeTween
+    ShopTween.Completed:Wait()
+    StopShopTween()
+    
+    return true
 end
 
 -- Posições dos NPCs de Fighting Styles
@@ -756,6 +774,11 @@ local StyleRequirements = {
 }
 
 local function BuyFightingStyle(styleName, remoteCommand)
+    -- NÃO EXECUTA SE ELITE HUNTER ESTIVER ATIVO
+    if getgenv().AutoElite then 
+        return false 
+    end
+    
     local requiredSea = StyleRequirements[styleName]
     local currentSea = GetSea()
     
@@ -766,11 +789,9 @@ local function BuyFightingStyle(styleName, remoteCommand)
     local npcPos = FightingStyleNPCs[styleName]
     if not npcPos then return false end
     
-    local tween = TweenToPosition(npcPos)
-    if tween then
-        tween.Completed:Wait()
+    local success = TweenToShop(npcPos)
+    if success then
         task.wait(0.5)
-        StopTweenAndHeartbeat()
         pcall(remoteCommand)
         return true
     end
@@ -993,96 +1014,632 @@ TG_SanguineArt:OnChanged(function(v)
     getgenv().AutoBuySanguineArt = v 
 end)
 
--- Sistema de Auto Buy em Loop
+-- ============================================
+-- SISTEMA DE AUTO BUY EM LOOP (COM PRIORIDADE)
+-- ============================================
+
 task.spawn(function()
     while task.wait(5) do
-        if getgenv().AutoBuyDarkStep then
-            pcall(function()
+        -- SÓ EXECUTA SE ELITE HUNTER NÃO ESTIVER ATIVO
+        if getgenv().AutoElite then 
+            continue 
+        end
+        
+        pcall(function()
+            if getgenv().AutoBuyDarkStep then
                 BuyFightingStyle("Dark Step", function() 
                     CF:InvokeServer("BuyBlackLeg") 
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyElectric then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyElectric then
                 BuyFightingStyle("Electro", function() 
                     CF:InvokeServer("BuyElectro") 
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyFishmanKarate then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyFishmanKarate then
                 BuyFightingStyle("Fishman Karate", function() 
                     CF:InvokeServer("BuyFishmanKarate") 
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyDragonBreath then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyDragonBreath then
                 BuyFightingStyle("Dragon Breath", function() 
                     CF:InvokeServer("BlackbeardReward", "DragonClaw", "1")
                     CF:InvokeServer("BlackbeardReward", "DragonClaw", "2")
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyDeathStep then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyDeathStep then
                 BuyFightingStyle("Death Step", function() 
                     CF:InvokeServer("BuyDeathStep") 
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyElectricClaw then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyElectricClaw then
                 BuyFightingStyle("Electric Claw", function() 
                     CF:InvokeServer("BuyElectricClaw", "Start")
                     CF:InvokeServer("BuyElectricClaw")
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuySharkmanKarate then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuySharkmanKarate then
                 BuyFightingStyle("Sharkman Karate", function() 
                     CF:InvokeServer("BuySharkmanKarate", true)
                     CF:InvokeServer("BuySharkmanKarate")
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyDragonTalon then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyDragonTalon then
                 BuyFightingStyle("Dragon Talon", function() 
                     CF:InvokeServer("BuyDragonTalon", true)
                     CF:InvokeServer("BuyDragonTalon")
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuyGodhuman then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuyGodhuman then
                 BuyFightingStyle("Godhuman", function() 
                     CF:InvokeServer("BuyGodhuman", true)
                     CF:InvokeServer("BuyGodhuman")
                 end)
-            end)
-        end
-        
-        if getgenv().AutoBuySanguineArt then
-            pcall(function()
+            end
+            
+            if getgenv().AutoBuySanguineArt then
                 BuyFightingStyle("Sanguine Art", function() 
                     CF:InvokeServer("BuySanguineArt", true)
                     CF:InvokeServer("BuySanguineArt")
                 end)
-            end)
+            end
+        end)
+    end
+end)
+
+print("[VOLT] Módulo Compras - Loaded Successfully!")
+-- ============================================
+-- MÓDULO ELITE HUNTER V2 - VOLT HUB
+-- Versão Otimizada e Organizada
+-- ============================================
+
+-- ============================================
+-- SEÇÃO 1: VARIÁVEIS GLOBAIS
+-- ============================================
+
+getgenv().AutoElite = false
+getgenv().HopElite = false
+getgenv().EliteQuestActive = false
+getgenv().CurrentEliteTarget = nil
+getgenv().NoEliteFoundTime = 0
+getgenv().MaxNoEliteTime = 15
+
+-- ============================================
+-- SEÇÃO 2: COORDENADAS E BYPASS
+-- ============================================
+
+local EliteHunterNPC = CFrame.new(-5420.16, 314.5, -2823.4)
+local CastleSeaBypass = Vector3.new(-5092, 315, -3130)
+local EliteNames = {"Diablo", "Deandre", "Urban"}
+
+local EliteTeleporters = {
+    ["Diablo"] = Vector3.new(-5092, 315, -3130),
+    ["Deandre"] = Vector3.new(-12001, 332, -8861),
+    ["Urban"] = Vector3.new(5659, 1013, -341)
+}
+
+-- ============================================
+-- SEÇÃO 3: FUNÇÕES AUXILIARES
+-- ============================================
+
+local function IsInSea3()
+    if World3 then return true end
+    if GetSea then return GetSea() == 3 end
+    return game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
+end
+
+local function FindElite()
+    for _, name in ipairs(EliteNames) do
+        local elite = RS:FindFirstChild(name) or WS.Enemies:FindFirstChild(name)
+        if elite and elite:FindFirstChild("Humanoid") and elite:FindFirstChild("HumanoidRootPart") 
+           and elite.Humanoid.Health > 0 then
+            return elite, name
+        end
+    end
+    return nil, nil
+end
+
+local function HasEliteQuest()
+    local ok, result = pcall(function()
+        local quest = LP.PlayerGui.Main.Quest
+        if quest.Visible then
+            local title = quest.Container.QuestTitle.Title.Text
+            return title:find("Diablo") or title:find("Deandre") or title:find("Urban")
+        end
+        return false
+    end)
+    return ok and result
+end
+
+-- ============================================
+-- SEÇÃO 4: BYPASS TELEPORT CASTLE
+-- ============================================
+
+local function TeleportCastleSea()
+    local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    
+    local distance = (root.Position - CastleSeaBypass).Magnitude
+    
+    if distance > 2000 then
+        pcall(function()
+            CF:InvokeServer("requestEntrance", CastleSeaBypass)
+        end)
+        task.wait(0.5)
+        
+        root.CFrame = CFrame.new(root.Position.X, root.Position.Y + 50, root.Position.Z)
+        task.wait(0.5)
+        
+        root.CFrame = CFrame.new(-5075.5, 314.5, -2952.3)
+        return true
+    else
+        root.CFrame = CFrame.new(-5075.5, 314.5, -2952.3)
+        return true
+    end
+end
+
+-- ============================================
+-- SEÇÃO 5: BYPASS INTELIGENTE PARA ELITE
+-- ============================================
+
+local FloatingTurtleTP = Vector3.new(-12471, 374, -7551)
+
+local function CheckEliteTurtle()
+    local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    
+    -- VERIFICA QUALQUER ELITE na tartaruga (Diablo/Deandre/Urban)
+    for _, eliteName in pairs(EliteNames) do
+        local elite = RS:FindFirstChild(eliteName) or WS.Enemies:FindFirstChild(eliteName)
+        if elite and elite:FindFirstChild("HumanoidRootPart") then
+            local elitePos = elite.HumanoidRootPart.Position
+            local turtleZone = Vector3.new(-12001, 332, -8861)
+            
+            -- ELITE ESTÁ NA TARTARUGA? (raio 1500 studs da zona tartaruga)
+            if (elitePos - turtleZone).Magnitude < 1500 then
+                -- PLAYER LONGE? (>2000 = BYPASS)
+                if (root.Position - FloatingTurtleTP).Magnitude > 2000 then
+                    print("🐢 Elite na Tartaruga → Bypass Mansão!")
+                    
+                    -- BYPASS TELEPORTE MANSÃO → TARTARUGA
+                    pcall(function()
+                        CF:InvokeServer("requestEntrance", FloatingTurtleTP)
+                    end)
+                    task.wait(0.5)
+                    root.CFrame = CFrame.new(root.Position.X, root.Position.Y + 50, root.Position.Z)
+                    task.wait(0.5)
+                    
+                    -- TP ZONA TARTARUGA
+                    root.CFrame = CFrame.new(-13274.5, 332.0, -7632.1)
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local function SmartEliteTeleport(eliteName)
+    local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not root or not eliteName then return false end
+    
+    local teleporterPos = EliteTeleporters[eliteName]
+    if not teleporterPos then return false end
+    
+    local distance = (root.Position - teleporterPos).Magnitude
+    
+    if distance > 2000 then
+        pcall(function()
+            CF:InvokeServer("requestEntrance", teleporterPos)
+        end)
+        task.wait(0.5)
+        
+        root.CFrame = CFrame.new(root.Position.X, root.Position.Y + 50, root.Position.Z)
+        task.wait(0.5)
+        
+        return true
+    end
+    
+    return false
+end
+
+-- ============================================
+-- SEÇÃO 6: SISTEMA DE QUEST
+-- ============================================
+
+local function GetEliteQuest()
+    if not CF or not IsInSea3() then return false end
+    
+    local c = LP.Character
+    local hrp = c and c:FindFirstChild("HumanoidRootPart")
+    if not c or not hrp then return false end
+    
+    if HasEliteQuest() then 
+        getgenv().EliteQuestActive = true
+        return true 
+    end
+    
+    TeleportCastleSea()
+    task.wait(0.5)
+    
+    c = LP.Character
+    hrp = c and c:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    local dist = (hrp.Position - EliteHunterNPC.Position).Magnitude
+    if dist > 5 then
+        TTG(hrp, EliteHunterNPC, 300)
+        task.wait(0.5)
+    end
+    
+    for i = 1, 10 do
+        pcall(function() CF:InvokeServer("EliteHunter") end)
+        task.wait(0.3)
+        if HasEliteQuest() then
+            getgenv().EliteQuestActive = true
+            return true
+        end
+    end
+    
+    return HasEliteQuest()
+end
+
+local function AbandonEliteQuest()
+    if CF and HasEliteQuest() then
+        pcall(function() CF:InvokeServer("AbandonQuest") end)
+        task.wait(0.2)
+        getgenv().EliteQuestActive = false
+    end
+end
+
+-- ============================================
+-- SEÇÃO 7: SISTEMA DE FARM (TF25 VOLT)
+-- ============================================
+
+local GT = nil
+local HC = nil
+local FC = nil
+local CBP = nil
+
+local function StopFollow()
+    if FC then 
+        FC:Disconnect()
+        FC = nil 
+    end
+    CBP = nil
+end
+
+local function DAC(c)
+    for _, p in pairs(c:GetDescendants()) do
+        if p:IsA("BasePart") then 
+            p.CanCollide = false 
+        end
+    end
+end
+
+local function TTGElite(hrp, tHRP, spd)
+    if not hrp or not tHRP then return end
+    spd = spd or 350
+    
+    -- CANCELA TWEENS ANTERIORES
+    if GT then GT:Cancel(); GT = nil end
+    if HC then HC:Disconnect(); HC = nil end
+    StopFollow()
+    
+    -- DESABILITA COLISÃO TOTAL
+    local c = LP.Character
+    if c then DAC(c) end
+    
+    -- CRIA TWEEN LINEAR
+    local tCF = tHRP.CFrame * CFrame.new(0, 25, 0)
+    local dist = (hrp.Position - tCF.Position).Magnitude
+    GT = TS:Create(hrp, 
+        TweenInfo.new(math.max(dist / spd, 0.05), Enum.EasingStyle.Linear),
+        {CFrame = tCF}
+    )
+    GT:Play()
+    
+    -- *** ANTI-TREMURA PRINCIPAL ***
+    HC = RSvc.Heartbeat:Connect(function()
+        if hrp and hrp.Parent then
+            -- ZERA VELOCIDADE A CADA FRAME
+            hrp.Velocity = Vector3.new(0, 0, 0)
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            -- DESABILITA COLISÃO CONTÍNUA
+            local c = LP.Character
+            if c then DAC(c) end
+        end
+    end)
+    
+    GT.Completed:Wait()
+    
+    -- Limpa conexão
+    if HC then 
+        HC:Disconnect()
+        HC = nil
+    end
+    
+    -- FOLLOW MODE (mantém no Elite)
+    getgenv().TweenCompleted = true
+    FC = RSvc.Stepped:Connect(function()
+        if not tHRP or not tHRP.Parent or not getgenv().AutoElite then
+            StopFollow()
+            return
+        end
+        
+        local c = LP.Character
+        if not c then 
+            StopFollow()
+            return 
+        end
+        
+        local cHRP = c:FindFirstChild("HumanoidRootPart")
+        if not cHRP then 
+            StopFollow()
+            return 
+        end
+        
+        DAC(c)
+        
+        local nCF = tHRP.CFrame * CFrame.new(0, 25, 0)
+        cHRP.AssemblyLinearVelocity = Vector3.zero
+        cHRP.Velocity = Vector3.zero
+        cHRP.CFrame = nCF
+        
+        CBP = nCF * CFrame.new(0, -25, 0)
+    end)
+end
+
+local function FarmElite(elite, eliteName)
+    if not elite or not elite:FindFirstChild("HumanoidRootPart") then return end
+    
+    local c = LP.Character
+    local hrp = c and c:FindFirstChild("HumanoidRootPart")
+    if not c or not hrp then return end
+    
+    local eliteHRP = elite.HumanoidRootPart
+    local eliteHum = elite.Humanoid
+    
+    if not eliteHRP or not eliteHum or eliteHum.Health <= 0 then return end
+    
+    local distance = (hrp.Position - eliteHRP.Position).Magnitude
+    
+    -- SÓ USA BYPASS SE ESTIVER LONGE (>2000 studs)
+    if distance > 2000 then
+        -- VERIFICA SE ELITE ESTÁ NA TARTARUGA
+        if not CheckEliteTurtle() then
+            -- SE NÃO, USA BYPASS NORMAL
+            SmartEliteTeleport(eliteName)
+        end
+        task.wait(0.5)
+        
+        c = LP.Character
+        hrp = c and c:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+    end
+    
+    -- USA TTG (TWEEN TO GOAL - ANTI TREMURA)
+    TTGElite(hrp, eliteHRP, 350)
+    
+    while elite.Parent and eliteHum.Health > 0 and getgenv().AutoElite do
+        BM(eliteName)
+        task.wait(0.05)
+    end
+    
+    StopFollow()
+end
+
+-- ============================================
+-- SEÇÃO 8: SISTEMA DE HOP MELHORADO
+-- ============================================
+
+local function CheckEliteExists()
+    for _, name in ipairs(EliteNames) do
+        if RS:FindFirstChild(name) or WS.Enemies:FindFirstChild(name) then
+            return true
+        end
+    end
+    return false
+end
+
+local function PerformServerHop()
+    if Fl and Fl.Notify then
+        Fl:Notify({
+            Title = "Elite Hunter",
+            Content = "Nenhum Elite encontrado. Hop em 5s...",
+            Duration = 5
+        })
+    end
+    
+    task.wait(5)
+    game:GetService("TeleportService"):Teleport(game.PlaceId, LP)
+end
+
+-- ============================================
+-- SEÇÃO 9: INTERFACE
+-- ============================================
+
+if TabEF then
+    TabEF:AddSection("Elite Hunter")
+    
+    local TG_AutoElite = TabEF:AddToggle("AutoElite", {
+        Title = "Auto Kill Elite",
+        Default = false
+    })
+    
+    TG_AutoElite:OnChanged(function(v)
+        getgenv().AutoElite = v
+        
+        if not v then
+            StopFollow()
+            AbandonEliteQuest()
+            getgenv().EliteQuestActive = false
+            getgenv().CurrentEliteTarget = nil
+            getgenv().NoEliteFoundTime = 0
+        else
+            if not IsInSea3() then
+                TG_AutoElite:SetValue(false)
+                getgenv().AutoElite = false
+                if Fl and Fl.Notify then
+                    Fl:Notify({
+                        Title = "Elite Hunter",
+                        Content = "Você precisa estar no Sea 3!",
+                        Duration = 5
+                    })
+                end
+            end
+        end
+    end)
+    
+    local TG_HopElite = TabEF:AddToggle("HopElite", {
+        Title = "Hop Elite",
+        Default = false
+    })
+    
+    TG_HopElite:OnChanged(function(v)
+        getgenv().HopElite = v
+    end)
+end
+
+-- ============================================
+-- SEÇÃO 10: LOOP PRINCIPAL
+-- ============================================
+
+task.spawn(function()
+    while task.wait() do
+        pcall(function()
+            if not getgenv().AutoElite then 
+                getgenv().NoEliteFoundTime = 0
+                return 
+            end
+            
+            if not IsInSea3() then
+                getgenv().AutoElite = false
+                if TG_AutoElite then TG_AutoElite:SetValue(false) end
+                return
+            end
+            
+            local c = LP.Character
+            local hrp = c and c:FindFirstChild("HumanoidRootPart")
+            local hum = c and c:FindFirstChild("Humanoid")
+            
+            if not c or not hrp or not hum or hum.Health <= 0 then
+                if hum and hum.Health <= 0 then
+                    StopFollow()
+                    AbandonEliteQuest()
+                    getgenv().EliteQuestActive = false
+                    
+                    repeat task.wait() until LP.Character 
+                        and LP.Character:FindFirstChild("HumanoidRootPart") 
+                        and LP.Character:FindFirstChild("Humanoid") 
+                        and LP.Character.Humanoid.Health > 0
+                    
+                    task.wait(1)
+                end
+                return
+            end
+            
+            local elite, eliteName = FindElite()
+            
+            if elite then
+                getgenv().NoEliteFoundTime = 0
+                getgenv().CurrentEliteTarget = eliteName
+                
+                if not HasEliteQuest() then
+                    getgenv().EliteQuestActive = false
+                    GetEliteQuest()
+                end
+                
+                EQ()
+                FarmElite(elite, eliteName)
+            else
+                getgenv().CurrentEliteTarget = nil
+                getgenv().NoEliteFoundTime = getgenv().NoEliteFoundTime + 0.1
+                
+                if HasEliteQuest() then
+                    AbandonEliteQuest()
+                end
+                
+                if getgenv().HopElite and getgenv().NoEliteFoundTime >= getgenv().MaxNoEliteTime then
+                    if not CheckEliteExists() then
+                        StopFollow()
+                        PerformServerHop()
+                    else
+                        getgenv().NoEliteFoundTime = 0
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- ============================================
+-- SEÇÃO 11: SISTEMA DE ATAQUE (AUTO CLICK)
+-- ============================================
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if getgenv().AutoElite and RA and RH then
+            local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then continue end
+            
+            local targets = {}
+            
+            for _, name in ipairs(EliteNames) do
+                local elite = WS.Enemies:FindFirstChild(name)
+                if elite and elite:FindFirstChild("Head") and elite:FindFirstChild("Humanoid") 
+                   and elite.Humanoid.Health > 0 and elite:FindFirstChild("HumanoidRootPart") then
+                    local dist = (hrp.Position - elite.HumanoidRootPart.Position).Magnitude
+                    if dist <= 350 then
+                        table.insert(targets, {elite, elite.Head})
+                    end
+                end
+            end
+            
+            if #targets > 0 then
+                RA:FireServer(0.1)
+                RH:FireServer(targets[1][2], targets)
+            end
         end
     end
 end)
+
+-- ============================================
+-- SEÇÃO 12: NOCLIP DURANTE AUTO ELITE
+-- ============================================
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if getgenv().AutoElite then
+            local c = LP.Character
+            if c then
+                for _, part in pairs(c:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+                
+                if not NoClipEnabled then
+                    EnableNoClip()
+                end
+            end
+        else
+            if NoClipEnabled then
+                DisableNoClip()
+            end
+        end
+    end
+end)
+
+print("[VOLT] Elite Hunter V2 - Loaded Successfully!")
 -- ============================================
 -- SISTEMA DE TELEPORT BYPASS E TWEEN
 -- ============================================
