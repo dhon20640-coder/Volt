@@ -1638,7 +1638,6 @@ task.spawn(function()
         end
     end
 end)
-
 print("[VOLT] Elite Hunter V2 - Loaded Successfully!")
 -- ============================================
 -- SISTEMA DE TELEPORT BYPASS E TWEEN
