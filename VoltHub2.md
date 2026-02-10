@@ -161,7 +161,7 @@ local TG_MAIN=TabF:AddToggle("MainFarm",{Title="Auto Farm",Default=false})
 TG_MAIN:OnChanged(function(v)if v then if getgenv().FarmMode=="Farm Katakuri"and(GL()<1500 or not World3)or getgenv().FarmMode=="Farm Bone"and(GL()<1500 or not World3)then TG_MAIN:SetValue(false);return end;if getgenv().FarmMode=="Farm Level"then getgenv().AF,getgenv().AK,getgenv().AB=true,false,false elseif getgenv().FarmMode=="Farm Katakuri"then getgenv().AF,getgenv().AK,getgenv().AB,getgenv().KataIndex=false,true,false,1 elseif getgenv().FarmMode=="Farm Bone"then getgenv().AF,getgenv().AK,getgenv().AB,getgenv().BoneIndex=false,false,true,1 end else getgenv().AF,getgenv().AK,getgenv().AB=false,false,false;RNP();SAT()end end)
 TabSt:AddSlider("Pts",{Title="Select Points",Default=1,Min=1,Max=100,Rounding=0}):OnChanged(function(v)getgenv().SP=v end);TabSt:AddDropdown("Stat",{Title="Selecionar Status",Values={"Melee","Defense","Sword","Gun","Blox Fruit"},Default=1}):OnChanged(function(v)getgenv().SA=({Melee="Melee",Defense="Defense",Sword="Sword",Gun="Gun",["Blox Fruit"]="Fruit"})[v]end);TabSt:AddToggle("AS",{Title="Auto Status",Default=false}):OnChanged(function(v)getgenv().AS=v end)
 TabSe:AddSection("Server HOP");TabSe:AddButton({Title="Rejoin",Callback=function()game:GetService("TeleportService"):Teleport(game.PlaceId,LP)end});TabSe:AddButton({Title="Hop Server near player",Callback=function()task.spawn(function()local HS,TS2,srvs=game:GetService("HttpService"),game:GetService("TeleportService"),{};local ok,res=pcall(function()return game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")end);if ok then local d=HS:JSONDecode(res);if d and d.data then for _,s in ipairs(d.data)do if s.playing and s.playing>=1 and s.playing<=8 and s.id~=game.JobId then table.insert(srvs,s.id)end end end end;if #srvs>0 then TS2:TeleportToPlaceInstance(game.PlaceId,srvs[math.random(1,#srvs)],LP)else TS2:Teleport(game.PlaceId,LP)end end)end})
-local SG=Instance.new("ScreenGui");SG.Name="VoltToggle";SG.ResetOnSpawn=false;SG.Parent=LP:WaitForChild("PlayerGui");local BTN=Instance.new("ImageButton");BTN.Size=UDim2.fromOffset(70,70);BTN.Position=UDim2.new(0,20,0,20);BTN.BackgroundTransparency=1;BTN.Image="rbxassetid://99825369604074";BTN.ScaleType=Enum.ScaleType.Fit;BTN.AutoButtonColor=false;BTN.ImageTransparency=0;BTN.Parent=SG;local UIC=Instance.new("UICorner");UIC.CornerRadius=UDim.new(1,0);UIC.Parent=BTN
+local SG=Instance.new("ScreenGui");SG.Name="VoltToggle";SG.ResetOnSpawn=false;SG.Parent=LP:WaitForChild("PlayerGui");local BTN=Instance.new("ImageButton");BTN.Size=UDim2.fromOffset(70,70);BTN.Position=UDim2.new(0,20,0,20);BTN.BackgroundTransparency=1;BTN.Image="rbxassetid://101674777317269";BTN.ScaleType=Enum.ScaleType.Fit;BTN.AutoButtonColor=false;BTN.ImageTransparency=0;BTN.Parent=SG;local UIC=Instance.new("UICorner");UIC.CornerRadius=UDim.new(1,0);UIC.Parent=BTN
 local dragging,dragInput,dragStart,startPos;local function update(input)local delta=input.Position-dragStart;BTN.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)end;BTN.InputBegan:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=true;dragStart=input.Position;startPos=BTN.Position;input.Changed:Connect(function()if input.UserInputState==Enum.UserInputState.End then dragging=false end end)end end);BTN.InputChanged:Connect(function(input)if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then dragInput=input end end);game:GetService("UserInputService").InputChanged:Connect(function(input)if input==dragInput and dragging then update(input)end end);BTN.MouseButton1Click:Connect(function()Win.Root.Visible=not Win.Root.Visible end)
 local RA,RH;task.spawn(function()task.wait(2);local M=RS:WaitForChild("Modules",5);if M then local N=M:FindFirstChild("Net");if N then RA,RH=N:FindFirstChild("RE/RegisterAttack"),N:FindFirstChild("RE/RegisterHit")end end end)
 task.spawn(function()while task.wait(0.1)do if IFA()and RA and RH then local tgts={};for _,m in pairs(WS.Enemies:GetChildren())do if m:FindFirstChild("Head")and m:FindFirstChild("Humanoid")and m.Humanoid.Health>0 then local valid=false;if getgenv().AF then local q=GQ();if q and m.Name==(q.M or q.Mon)then valid=true end elseif getgenv().AK then for _,n in ipairs(KM)do if m.Name==n then valid=true;break end end elseif getgenv().AB then for _,n in ipairs(BonM)do if m.Name==n then valid=true;break end end end;if valid then table.insert(tgts,{m,m.Head})end end end;if #tgts>0 then RA:FireServer(0.1);RH:FireServer(tgts[1][2],tgts)end end end end)
@@ -182,7 +182,7 @@ if not Win or not Fl then return end
 
 local TabEF=Win:AddTab({Title="Stack Farming",Icon="swords"})
 
-local ESP_Player=false;local ESP_Fruit=false;local ESP_Island=false;local ESP_Chest=false
+local ESP_Player=false;local ESP_Fruit=false;local ESP_Chest=false
 local AutoRF=false;local AutoSF=false;local AQK=false
 
 local function MakeTag(part,text,color,stroke,isIsland)
@@ -199,9 +199,7 @@ local function MakeTag(part,text,color,stroke,isIsland)
     local tl=gui:FindFirstChild("TextLabel")
     if tl then 
         tl.Text=text;tl.TextColor3=color or Color3.new(1,1,1)
-        if isIsland then
-            tl.TextStrokeTransparency=1;tl.TextSize=20
-        elseif stroke then
+        if stroke then
             tl.TextStrokeTransparency=0.3;tl.TextStrokeColor3=Color3.new(0,0,0);tl.TextSize=18
         else
             tl.TextStrokeTransparency=1;tl.TextSize=16
@@ -285,46 +283,6 @@ local function UpdateESPFruits()
     end
 end
 
-local IslandTags={"Island","SpawnIsland","Location","MapIsland"}
-local function IsIslandByStructure(obj)
-    if not obj:IsA("Model")then return false end
-    local name=obj.Name:lower()
-    if name:find("island")or name:find("ilha")then return true end
-    return obj:FindFirstChild("NPCs")or obj:FindFirstChild("Locations")or obj:FindFirstChild("Spawns")or obj:FindFirstChild("Enemies")or obj:FindFirstChildWhichIsA("SpawnLocation",true)
-end
-
-local function GetIslandPart(obj)
-    return obj.PrimaryPart or obj:FindFirstChildWhichIsA("SpawnLocation",true)or obj:FindFirstChildWhichIsA("BasePart")
-end
-
-local function UpdateESPIslands()
-    if not ESP_Island then return end
-    local my=Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
-    local done={}
-    for _,tag in ipairs(IslandTags)do
-        for _,obj in ipairs(CS:GetTagged(tag))do
-            if not done[obj]and obj:IsA("Model")then
-                local part=GetIslandPart(obj)
-                if part then
-                    local dist=my and math.floor((part.Position-my.Position).Magnitude)or 0
-                    MakeTag(part,obj.Name.." ("..dist.."m)",Color3.fromRGB(255,170,0),false,true)
-                    done[obj]=true
-                end
-            end
-        end
-    end
-    for _,obj in ipairs(WS:GetDescendants())do
-        if not done[obj]and IsIslandByStructure(obj)then
-            local part=GetIslandPart(obj)
-            if part then
-                local dist=my and math.floor((part.Position-my.Position).Magnitude)or 0
-                MakeTag(part,obj.Name.." ("..dist.."m)",Color3.fromRGB(255,170,0),false,true)
-                done[obj]=true
-            end
-        end
-    end
-end
-
 local function GetChestColor(chestName)
     local name=chestName:lower()
     if name:find("diamond")or name:find("diamante")then return Color3.fromRGB(0,255,255)
@@ -377,7 +335,6 @@ if TabSt then
     TabSt:AddSection("ESP")
     TabSt:AddToggle("ESPPlayer",{Title="ESP Players",Default=false}):OnChanged(function(v)ESP_Player=v;if not v then ClearESP()end end)
     TabSt:AddToggle("ESPFruit",{Title="ESP Fruits",Default=false}):OnChanged(function(v)ESP_Fruit=v;if not v then ClearESP()end end)
-    TabSt:AddToggle("ESPIsland",{Title="ESP Ilha",Default=false}):OnChanged(function(v)ESP_Island=v;if not v then ClearESP()end end)
     TabSt:AddToggle("ESPChest",{Title="ESP Chest",Default=false}):OnChanged(function(v)ESP_Chest=v;if not v then ClearESP()end end)
 end
 
@@ -487,8 +444,10 @@ if TabSF then
     TabSF:AddToggle("NoClip",{Title="NoClip",Default=false}):OnChanged(function(v)if v then EnableNoClip()else DisableNoClip()end end)
 end
 
--- Teleport Sea Buttons
-if TabM and CF then
+-- ============================================
+-- TELEPORT SEA - MOVIDO PARA TAB LOCALPLAYER
+-- ============================================
+if TabLP and CF then
     local function GetSea()
         if game.PlaceId==2753915549 or game.PlaceId==85211729168715 then return 1
         elseif game.PlaceId==4442272183 or game.PlaceId==79091703265657 then return 2
@@ -496,20 +455,34 @@ if TabM and CF then
         else return 1 end
     end
     
-    TabM:AddButton({Title="Teleport Sea 1",Description="Viajar para Sea 1",Callback=function()
-        if GetSea()==1 then return end
-        CF:InvokeServer("TravelMain")
-    end})
+    TabLP:AddSection("Travel Sea")
     
-    TabM:AddButton({Title="Teleport Sea 2",Description="Viajar para Sea 2",Callback=function()
-        if GetSea()==2 then return end
-        CF:InvokeServer("TravelDressrosa")
-    end})
+    TabLP:AddButton({
+        Title="Teleport Sea 1",
+        Description="Viajar para Sea 1",
+        Callback=function()
+            if GetSea()==1 then return end
+            CF:InvokeServer("TravelMain")
+        end
+    })
     
-    TabM:AddButton({Title="Teleport Sea 3",Description="Viajar para Sea 3",Callback=function()
-        if GetSea()==3 then return end
-        CF:InvokeServer("TravelZou")
-    end})
+    TabLP:AddButton({
+        Title="Teleport Sea 2",
+        Description="Viajar para Sea 2",
+        Callback=function()
+            if GetSea()==2 then return end
+            CF:InvokeServer("TravelDressrosa")
+        end
+    })
+    
+    TabLP:AddButton({
+        Title="Teleport Sea 3",
+        Description="Viajar para Sea 3",
+        Callback=function()
+            if GetSea()==3 then return end
+            CF:InvokeServer("TravelZou")
+        end
+    })
 end
 
 -- Auto Accept Quest para Katakuri/Bone
@@ -541,7 +514,6 @@ task.spawn(function()
             for _,v in ipairs(WS:GetDescendants())do if v:IsA("BillboardGui")and v.Name=="NexusESP_Tag"and(not v.Adornee or not v.Adornee.Parent)then v:Destroy()end end
             if ESP_Player then UpdateESPPlayers()end
             if ESP_Fruit then UpdateESPFruits()end
-            if ESP_Island then UpdateESPIslands()end
             if ESP_Chest then UpdateESPChests()end
             if AutoRF and CF then CF:InvokeServer("Cousin","Buy")end
         end)
@@ -658,6 +630,8 @@ task.spawn(function()
         end)
     end
 end)
+
+print("[VOLT] ESP & Auto Fruits - Loaded Successfully!")
 -- ============================================
 -- MÓDULO: COMPRAS - 10 TOGGLES (CORRIGIDO)
 -- Versão sem conflitos com Elite Hunter
@@ -1638,6 +1612,7 @@ task.spawn(function()
         end
     end
 end)
+
 print("[VOLT] Elite Hunter V2 - Loaded Successfully!")
 -- ============================================
 -- SISTEMA DE TELEPORT BYPASS E TWEEN
