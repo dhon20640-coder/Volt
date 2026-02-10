@@ -1864,3 +1864,462 @@ task.spawn(function()
         end)
     end
 end)
+-- ============================================
+-- MÓDULO: COMPRAS - 10 TOGGLES (CORRIGIDO)
+-- ============================================
+
+do
+    local success, err = pcall(function()
+        local RS = game:GetService("ReplicatedStorage")
+        local TS = game:GetService("TweenService")
+        local RSvc = game:GetService("RunService")
+        local Plr = game:GetService("Players").LocalPlayer
+        local WS = game:GetService("Workspace")
+        local Lighting = game:GetService("Lighting")
+
+        -- Verificação segura de Remotes
+        local Remotes = RS:WaitForChild("Remotes", 5)
+        if not Remotes then 
+            warn("[MÓDULO COMPRAS] Remotes não encontrado, pulando módulo...")
+            return 
+        end
+
+        local CF = Remotes:FindFirstChild("CommF_")
+        if not CF then 
+            warn("[MÓDULO COMPRAS] CommF_ não encontrado, pulando módulo...")
+            return 
+        end
+
+        -- Verificação de Sea
+        local World1 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715
+        local World2 = game.PlaceId == 4442272183 or game.PlaceId == 79091703265657
+        local World3 = game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
+
+        local function GetSea()
+            return World1 and 1 or World2 and 2 or World3 and 3 or 1
+        end
+
+        -- Configurações globais dos toggles
+        getgenv().AutoBuyDarkStep = getgenv().AutoBuyDarkStep or false
+        getgenv().AutoBuyElectric = getgenv().AutoBuyElectric or false
+        getgenv().AutoBuyFishmanKarate = getgenv().AutoBuyFishmanKarate or false
+        getgenv().AutoBuyDragonBreath = getgenv().AutoBuyDragonBreath or false
+        getgenv().AutoBuyDeathStep = getgenv().AutoBuyDeathStep or false
+        getgenv().AutoBuyElectricClaw = getgenv().AutoBuyElectricClaw or false
+        getgenv().AutoBuySharkmanKarate = getgenv().AutoBuySharkmanKarate or false
+        getgenv().AutoBuyDragonTalon = getgenv().AutoBuyDragonTalon or false
+        getgenv().AutoBuyGodhuman = getgenv().AutoBuyGodhuman or false
+        getgenv().AutoBuySanguineArt = getgenv().AutoBuySanguineArt or false
+        getgenv().FPSBoost = getgenv().FPSBoost or false
+
+        -- Sistema de Tween Anti-Tremor
+        local activeTween, heartbeatConn = nil, nil
+
+        local function StopTweenAndHeartbeat()
+            if activeTween then 
+                activeTween:Cancel() 
+                activeTween = nil 
+            end
+            if heartbeatConn then 
+                heartbeatConn:Disconnect() 
+                heartbeatConn = nil 
+            end
+        end
+
+        local function TweenToPosition(targetCFrame)
+            local char, hrp = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            
+            StopTweenAndHeartbeat()
+            
+            local distance = (hrp.Position - targetCFrame.Position).Magnitude
+            activeTween = TS:Create(hrp, TweenInfo.new(distance / 250, Enum.EasingStyle.Linear), {CFrame = targetCFrame})
+            activeTween:Play()
+            
+            heartbeatConn = RSvc.Heartbeat:Connect(function()
+                if not hrp or not hrp.Parent then 
+                    StopTweenAndHeartbeat() 
+                    return 
+                end
+                hrp.Velocity = Vector3.new(0, 0, 0)
+            end)
+            
+            return activeTween
+        end
+
+        -- Posições dos NPCs de Fighting Styles
+        local FightingStyleNPCs = {
+            ["Dark Step"] = CFrame.new(-983.6179809570312, 12.449996948242188, 3990.462890625),
+            ["Electro"] = CFrame.new(-5382.7822265625, 12.550003051757812, -2148.818115234375),
+            ["Fishman Karate"] = CFrame.new(61586.722, 18.9, 989.584),
+            ["Dragon Breath"] = CFrame.new(699.572, 186.99, 656.837),
+            ["Death Step"] = CFrame.new(6358.787, 296.661, -6766.079),
+            ["Electric Claw"] = CFrame.new(6358.787, 296.661, -6766.079),
+            ["Sharkman Karate"] = CFrame.new(-2602.152, 239.212, -10315.58),
+            ["Dragon Talon"] = CFrame.new(5666.225, 1211.307, 866.386),
+            ["Godhuman"] = CFrame.new(-13777.618, 334.652, -9879.684),
+            ["Sanguine Art"] = CFrame.new(-16515.053, 23.17, -193.006)
+        }
+
+        -- Requisitos de Sea para cada estilo
+        local StyleRequirements = {
+            ["Dark Step"] = 1,
+            ["Electro"] = 1,
+            ["Fishman Karate"] = 2,
+            ["Dragon Breath"] = 2,
+            ["Death Step"] = 2,
+            ["Electric Claw"] = 2,
+            ["Sharkman Karate"] = 2,
+            ["Dragon Talon"] = 3,
+            ["Godhuman"] = 3,
+            ["Sanguine Art"] = 3
+        }
+
+        local function BuyFightingStyle(styleName, remoteCommand)
+            local requiredSea = StyleRequirements[styleName]
+            local currentSea = GetSea()
+            
+            if currentSea < requiredSea then
+                return false
+            end
+            
+            local npcPos = FightingStyleNPCs[styleName]
+            if not npcPos then return false end
+            
+            local tween = TweenToPosition(npcPos)
+            if tween then
+                tween.Completed:Wait()
+                task.wait(0.5)
+                StopTweenAndHeartbeat()
+                pcall(remoteCommand)
+                return true
+            end
+            
+            return false
+        end
+
+        -- Lista de códigos
+        local CodesList = {
+            "SUB2GAMERROBOT_EXP1", "SUB2GAMERROBOT_EXP2", "SUB2GAMERROBOT_EXP3",
+            "SUB2GAMERROBOT_EXP4", "SUB2GAMERROBOT_EXP5", "SUB2GAMERROBOT_RESET1",
+            "SUBGAMERROBOT_EXP", "SUBGAMERROBOT_RESET", "Sub2UncleKizaru",
+            "Sub2Fer999", "Enyu_is_Pro", "Magicbus", "JCWK", "Starcodeheo",
+            "Bluxxy", "Sub2Captainmaui", "Sub2OfficialNoobie", "StrawHatMaine",
+            "Sub2NoobMaster123", "Axiore", "TantaiGaming", "DRAGONABUSE",
+            "THEGREATACE", "SUB2GAMERROBOT_RESET2", "BIGNEWS", "BLUXXY",
+            "FUDD10", "FUDD10_V2", "BIGNEWS_V2", "SUB2NOOBMASTER123",
+            "Sub2Daigrock", "CHANDLER", "KITT_RESET", "DEVSCOOKING",
+            "KITTGAMING", "SECRET_ADMIN", "SUB2OFFICIALNOOBIE", "ADMIN_TROLL"
+        }
+
+        -- Função FPS Boost
+        local function ApplyFPSBoost()
+            task.spawn(function()
+                pcall(function()
+                    -- Configurar Lighting
+                    Lighting.GlobalShadows = false
+                    Lighting.Brightness = 0
+                    Lighting.OutdoorAmbient = Color3.new(0, 0, 0)
+                    Lighting.FogEnd = 9e9
+                    
+                    -- Configurar qualidade de renderização
+                    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+                    
+                    -- Desabilitar notificações
+                    if Plr.PlayerGui:FindFirstChild("Notifications") then
+                        Plr.PlayerGui.Notifications.Enabled = false
+                    end
+                    
+                    -- Processar Workspace
+                    for _, obj in pairs(WS:GetDescendants()) do
+                        task.spawn(function()
+                            pcall(function()
+                                -- Remover texturas
+                                if obj:IsA("Decal") then
+                                    obj.Transparency = 1
+                                elseif obj:IsA("Texture") then
+                                    obj.Transparency = 1
+                                elseif obj:IsA("MeshPart") then
+                                    obj.TextureID = ""
+                                elseif obj:IsA("SpecialMesh") then
+                                    obj.TextureId = ""
+                                
+                                -- Remover partículas e efeitos
+                                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+                                    obj.Enabled = false
+                                elseif obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
+                                    obj.Enabled = false
+                                
+                                -- Remover sombras e luzes
+                                elseif obj:IsA("BasePart") then
+                                    obj.CastShadow = false
+                                    obj.Material = Enum.Material.SmoothPlastic
+                                elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+                                    obj.Enabled = false
+                                
+                                -- Remover blooms e blur
+                                elseif obj:IsA("BloomEffect") or obj:IsA("BlurEffect") or obj:IsA("DepthOfFieldEffect") then
+                                    obj.Enabled = false
+                                elseif obj:IsA("SunRaysEffect") or obj:IsA("ColorCorrectionEffect") then
+                                    obj.Enabled = false
+                                end
+                            end)
+                        end)
+                    end
+                    
+                    print("[FPS Boost] ✅ Ativado com sucesso!")
+                end)
+            end)
+        end
+
+        local function DisableFPSBoost()
+            pcall(function()
+                Lighting.GlobalShadows = true
+                Lighting.Brightness = 1
+                Lighting.FogEnd = 100000
+                
+                settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+                
+                if Plr.PlayerGui:FindFirstChild("Notifications") then
+                    Plr.PlayerGui.Notifications.Enabled = true
+                end
+                
+                print("[FPS Boost] ⚠️ Desativado! Dê rejoin para restaurar texturas.")
+            end)
+        end
+
+        -- Verificar se TabSe existe antes de usar
+        if _G.TabSe or TabSe then
+            local TabSeRef = _G.TabSe or TabSe
+            
+            pcall(function()
+                TabSeRef:AddSection("Performance")
+
+                local TG_FPSBoost = TabSeRef:AddToggle("FPSBoost", {
+                    Title = "FPS Boost", 
+                    Default = false
+                })
+
+                TG_FPSBoost:OnChanged(function(v)
+                    getgenv().FPSBoost = v
+                    
+                    if v then
+                        ApplyFPSBoost()
+                    else
+                        DisableFPSBoost()
+                    end
+                end)
+            end)
+        end
+
+        -- Verificar se TabS existe antes de usar
+        if _G.TabS or TabS then
+            local TabSRef = _G.TabS or TabS
+            
+            pcall(function()
+                -- Botão Redeem All Codes
+                TabSRef:AddButton({
+                    Title = "Redeem All Codes",
+                    Callback = function()
+                        task.spawn(function()
+                            for _, code in pairs(CodesList) do
+                                pcall(function()
+                                    CF:InvokeServer("Redeem", code)
+                                end)
+                                task.wait(0.5)
+                            end
+                        end)
+                    end
+                })
+
+                TabSRef:AddSection("Auto Buy Fighting Styles")
+
+                -- Toggle 1: Dark Step
+                local TG_DarkStep = TabSRef:AddToggle("AutoBuyDarkStep", {
+                    Title = "Auto Buy Dark Step", 
+                    Default = false
+                })
+                TG_DarkStep:OnChanged(function(v) 
+                    getgenv().AutoBuyDarkStep = v 
+                end)
+
+                -- Toggle 2: Electric
+                local TG_Electric = TabSRef:AddToggle("AutoBuyElectric", {
+                    Title = "Auto Buy Electric", 
+                    Default = false
+                })
+                TG_Electric:OnChanged(function(v) 
+                    getgenv().AutoBuyElectric = v 
+                end)
+
+                -- Toggle 3: Fishman Karate
+                local TG_FishmanKarate = TabSRef:AddToggle("AutoBuyFishmanKarate", {
+                    Title = "Auto Buy Fishman Karate", 
+                    Default = false
+                })
+                TG_FishmanKarate:OnChanged(function(v) 
+                    getgenv().AutoBuyFishmanKarate = v 
+                end)
+
+                -- Toggle 4: Dragon Breath
+                local TG_DragonBreath = TabSRef:AddToggle("AutoBuyDragonBreath", {
+                    Title = "Auto Buy Dragon Breath", 
+                    Default = false
+                })
+                TG_DragonBreath:OnChanged(function(v) 
+                    getgenv().AutoBuyDragonBreath = v 
+                end)
+
+                -- Toggle 5: Death Step
+                local TG_DeathStep = TabSRef:AddToggle("AutoBuyDeathStep", {
+                    Title = "Auto Buy Death Step", 
+                    Default = false
+                })
+                TG_DeathStep:OnChanged(function(v) 
+                    getgenv().AutoBuyDeathStep = v 
+                end)
+
+                -- Toggle 6: Electric Claw
+                local TG_ElectricClaw = TabSRef:AddToggle("AutoBuyElectricClaw", {
+                    Title = "Auto Buy Electric Claw", 
+                    Default = false
+                })
+                TG_ElectricClaw:OnChanged(function(v) 
+                    getgenv().AutoBuyElectricClaw = v 
+                end)
+
+                -- Toggle 7: Sharkman Karate
+                local TG_SharkmanKarate = TabSRef:AddToggle("AutoBuySharkmanKarate", {
+                    Title = "Auto Buy Sharkman Karate", 
+                    Default = false
+                })
+                TG_SharkmanKarate:OnChanged(function(v) 
+                    getgenv().AutoBuySharkmanKarate = v 
+                end)
+
+                -- Toggle 8: Dragon Talon
+                local TG_DragonTalon = TabSRef:AddToggle("AutoBuyDragonTalon", {
+                    Title = "Auto Buy Dragon Talon", 
+                    Default = false
+                })
+                TG_DragonTalon:OnChanged(function(v) 
+                    getgenv().AutoBuyDragonTalon = v 
+                end)
+
+                -- Toggle 9: Godhuman
+                local TG_Godhuman = TabSRef:AddToggle("AutoBuyGodhuman", {
+                    Title = "Auto Buy Godhuman", 
+                    Default = false
+                })
+                TG_Godhuman:OnChanged(function(v) 
+                    getgenv().AutoBuyGodhuman = v 
+                end)
+
+                -- Toggle 10: Sanguine Art
+                local TG_SanguineArt = TabSRef:AddToggle("AutoBuySanguineArt", {
+                    Title = "Auto Buy Sanguine Art", 
+                    Default = false
+                })
+                TG_SanguineArt:OnChanged(function(v) 
+                    getgenv().AutoBuySanguineArt = v 
+                end)
+            end)
+        end
+
+        -- Sistema de Auto Buy em Loop
+        task.spawn(function()
+            while task.wait(5) do
+                if getgenv().AutoBuyDarkStep then
+                    pcall(function()
+                        BuyFightingStyle("Dark Step", function() 
+                            CF:InvokeServer("BuyBlackLeg") 
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyElectric then
+                    pcall(function()
+                        BuyFightingStyle("Electro", function() 
+                            CF:InvokeServer("BuyElectro") 
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyFishmanKarate then
+                    pcall(function()
+                        BuyFightingStyle("Fishman Karate", function() 
+                            CF:InvokeServer("BuyFishmanKarate") 
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyDragonBreath then
+                    pcall(function()
+                        BuyFightingStyle("Dragon Breath", function() 
+                            CF:InvokeServer("BlackbeardReward", "DragonClaw", "1")
+                            CF:InvokeServer("BlackbeardReward", "DragonClaw", "2")
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyDeathStep then
+                    pcall(function()
+                        BuyFightingStyle("Death Step", function() 
+                            CF:InvokeServer("BuyDeathStep") 
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyElectricClaw then
+                    pcall(function()
+                        BuyFightingStyle("Electric Claw", function() 
+                            CF:InvokeServer("BuyElectricClaw", "Start")
+                            CF:InvokeServer("BuyElectricClaw")
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuySharkmanKarate then
+                    pcall(function()
+                        BuyFightingStyle("Sharkman Karate", function() 
+                            CF:InvokeServer("BuySharkmanKarate", true)
+                            CF:InvokeServer("BuySharkmanKarate")
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyDragonTalon then
+                    pcall(function()
+                        BuyFightingStyle("Dragon Talon", function() 
+                            CF:InvokeServer("BuyDragonTalon", true)
+                            CF:InvokeServer("BuyDragonTalon")
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuyGodhuman then
+                    pcall(function()
+                        BuyFightingStyle("Godhuman", function() 
+                            CF:InvokeServer("BuyGodhuman", true)
+                            CF:InvokeServer("BuyGodhuman")
+                        end)
+                    end)
+                end
+                
+                if getgenv().AutoBuySanguineArt then
+                    pcall(function()
+                        BuyFightingStyle("Sanguine Art", function() 
+                            CF:InvokeServer("BuySanguineArt", true)
+                            CF:InvokeServer("BuySanguineArt")
+                        end)
+                    end)
+                end
+            end
+        end)
+        
+    end)
+    
+    if not success then
+        warn("[MÓDULO COMPRAS] Erro ao carregar: " .. tostring(err))
+    end
+end
