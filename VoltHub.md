@@ -1865,11 +1865,12 @@ task.spawn(function()
     end
 end)
 -- ============================================
--- MÓDULO: COMPRAS - 10 TOGGLES (CORRIGIDO)
+-- MÓDULO: COMPRAS - VERSÃO CORRIGIDA FINAL
 -- ============================================
 
 do
     local success, err = pcall(function()
+        -- Verificações de serviços
         local RS = game:GetService("ReplicatedStorage")
         local TS = game:GetService("TweenService")
         local RSvc = game:GetService("RunService")
@@ -1890,7 +1891,7 @@ do
             return 
         end
 
-        -- Verificação de Sea
+        -- Verificação de Sea (PlaceIDs ORIGINAIS)
         local World1 = game.PlaceId == 2753915549 or game.PlaceId == 85211729168715
         local World2 = game.PlaceId == 4442272183 or game.PlaceId == 79091703265657
         local World3 = game.PlaceId == 7449423635 or game.PlaceId == 100117331123089
@@ -1927,7 +1928,8 @@ do
         end
 
         local function TweenToPosition(targetCFrame)
-            local char, hrp = Plr.Character, Plr.Character and Plr.Character:FindFirstChild("HumanoidRootPart")
+            local char = Plr.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
             
             StopTweenAndHeartbeat()
@@ -2016,25 +2018,20 @@ do
         local function ApplyFPSBoost()
             task.spawn(function()
                 pcall(function()
-                    -- Configurar Lighting
                     Lighting.GlobalShadows = false
                     Lighting.Brightness = 0
                     Lighting.OutdoorAmbient = Color3.new(0, 0, 0)
                     Lighting.FogEnd = 9e9
                     
-                    -- Configurar qualidade de renderização
                     settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
                     
-                    -- Desabilitar notificações
                     if Plr.PlayerGui:FindFirstChild("Notifications") then
                         Plr.PlayerGui.Notifications.Enabled = false
                     end
                     
-                    -- Processar Workspace
                     for _, obj in pairs(WS:GetDescendants()) do
                         task.spawn(function()
                             pcall(function()
-                                -- Remover texturas
                                 if obj:IsA("Decal") then
                                     obj.Transparency = 1
                                 elseif obj:IsA("Texture") then
@@ -2043,21 +2040,15 @@ do
                                     obj.TextureID = ""
                                 elseif obj:IsA("SpecialMesh") then
                                     obj.TextureId = ""
-                                
-                                -- Remover partículas e efeitos
                                 elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
                                     obj.Enabled = false
                                 elseif obj:IsA("Fire") or obj:IsA("Smoke") or obj:IsA("Sparkles") then
                                     obj.Enabled = false
-                                
-                                -- Remover sombras e luzes
                                 elseif obj:IsA("BasePart") then
                                     obj.CastShadow = false
                                     obj.Material = Enum.Material.SmoothPlastic
                                 elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
                                     obj.Enabled = false
-                                
-                                -- Remover blooms e blur
                                 elseif obj:IsA("BloomEffect") or obj:IsA("BlurEffect") or obj:IsA("DepthOfFieldEffect") then
                                     obj.Enabled = false
                                 elseif obj:IsA("SunRaysEffect") or obj:IsA("ColorCorrectionEffect") then
@@ -2088,7 +2079,7 @@ do
             end)
         end
 
-        -- Verificar se TabSe existe antes de usar
+        -- Verificar se TabSe existe antes de usar (Settings tab)
         if _G.TabSe or TabSe then
             local TabSeRef = _G.TabSe or TabSe
             
@@ -2112,7 +2103,7 @@ do
             end)
         end
 
-        -- Verificar se TabS existe antes de usar
+        -- Verificar se TabS existe antes de usar (Shop tab)
         if _G.TabS or TabS then
             local TabSRef = _G.TabS or TabS
             
