@@ -86,7 +86,7 @@ QuestIlha.QuestData = {
     [2450] = {NameQuest = "TikiQuest1", LevelQuest = 1, Mon = "Isle Outlaw", CFrameQuest = CFrame.new(-16545.9355, 55.6863556, -173.230499), CFrameMon = CFrame.new(-16120.6035, 116.520554, -103.038849)},
     [2475] = {NameQuest = "TikiQuest1", LevelQuest = 2, Mon = "Island Boy", CFrameQuest = CFrame.new(-16545.9355, 55.6863556, -173.230499), CFrameMon = CFrame.new(-16751.3125, 121.226219, -264.015015)},
     [2500] = {NameQuest = "TikiQuest2", LevelQuest = 1, Mon = "Guerreiro Beijado pelo Sol", CFrameQuest = CFrame.new(-16539.078125, 55.68632888793945, 1051.5738525390625), CFrameMon = CFrame.new(-16294.6748, 32.7874393, 1062.4856)},
-    [2525] = {NameQuest = "TikiQuest2", LevelQuest = 2, Mon = "Isle Champion", CFrameQuest = CFrame.new(-16539.078125, 55.68632888793945, 1051.5738525390625), CFrameMon = CFrame.new(-16933.2129, 93.3503036, 999.450989)}
+    [2525] = {NameQuest = "TikiQuest2", LevelQuest = 2, Mon = "Isle Champion", CFrameQuest = CFrame.new(-16539.078125, 55.68632888793945, 1051.5738525390625), CFrameMon = CFrame.new(-16933.2129, 93.3503036, 999.450989)},     -- NOVAS QUESTS ADICIONADAS (SUBMERGED)
     [2600] = {NameQuest = "SubmergedQuest1", LevelQuest = 1, Mon = "Reef Bandit", CFrameQuest = CFrame.new(10882.264, -2086.322, 10034.226), CFrameMon = CFrame.new(10736.6191, -2087.8439, 9338.4882)},
     [2625] = {NameQuest = "SubmergedQuest1", LevelQuest = 2, Mon = "Coral Pirate", CFrameQuest = CFrame.new(10882.264, -2086.322, 10034.226), CFrameMon = CFrame.new(10965.1025, -2158.8842, 9177.2597)},
     [2650] = {NameQuest = "SubmergedQuest2", LevelQuest = 1, Mon = "Sea Chanter", CFrameQuest = CFrame.new(10882.264, -2086.322, 10034.226), CFrameMon = CFrame.new(10621.0342, -2087.844, 10102.0332)},
